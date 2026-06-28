@@ -1,0 +1,3206 @@
+[
+  {
+    "name": "log_meal",
+    "description": "Log a meal to the user's food diary. Use when the user mentions eating something, describes a meal, or asks to log food.\n\nINFER — do not ask the user for these:\n- date: default to today; infer from context (\"yesterday\", \"last night\")\n- meal_type: infer from time of day (midnight-5am=Snack, 5am-10am=Breakfast, 10am-2pm=Lunch, 2pm-5pm=Snack, 5pm-10pm=Dinner, 10pm-midnight=Snack) or context (\"post-workout shake\"=Post-Workout). See mealTypeForHour in src/lib/mealTypes.ts for the canonical mapping.\n- calories, protein_g, fat_g, carbs_g: ALWAYS estimate these from the food description before calling this tool — a meal must never be logged without macros. Use nutritional knowledge to produce reasonable estimates. Do not ask the user.\n\nBRAND NAMES: If the food description includes a brand, restaurant, or specific product (e.g. \"Chipotle chicken bowl\", \"Clif Bar Chocolate Chip\", \"Trader Joe's mandarin orange chicken\", \"Starbucks grande oat latte\"), try to look up the actual published macros for that product on the internet before falling back to a generic estimate. Use the brand's official nutrition data when available; only estimate from general nutritional knowledge if no published values can be found. Match the size/variant the user mentioned (and assume a standard serving when unspecified).\n\nASK the user only if food_items are entirely absent. Never call this tool without calories and macros populated.\n\nFASTING: If the user says they ate nothing / fasted all day, log a single entry with food_items \"Fast day\" and calories, protein_g, fat_g, carbs_g all set to 0 (meal_type \"Snack\"). This records the day as a real 0-calorie day so it counts correctly in calorie and TDEE math, distinct from a day that simply was not logged.\n\nDUPLICATES: If this tool returns a duplicate error, tell the user what was already logged and ask: \"Did you have this again as a separate serving, or would you like me to update the existing entry instead (e.g. doubling the portion)?\" If they confirm it is a separate serving, call this tool again with force=true. If they want to combine portions, call update_meal with the adjusted values.",
+    "annotations": {
+      "title": "Log a meal",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date of the meal. Format: YYYY-MM-DD. Required — default to today if not specified."
+        },
+        "meal_type": {
+          "type": "string",
+          "enum": [
+            "Breakfast",
+            "Lunch",
+            "Dinner",
+            "Snack",
+            "Post-Workout"
+          ],
+          "description": "Type of meal. Required — infer from time of day or context if not stated."
+        },
+        "food_items": {
+          "type": "string",
+          "description": "Description of the food and drinks consumed. Required — ask the user if completely absent."
+        },
+        "calories": {
+          "type": "integer",
+          "description": "Total calories (kcal). Required — estimate from the food description before calling this tool. Never omit."
+        },
+        "protein_g": {
+          "type": "number",
+          "description": "Protein in grams. Required — estimate from the food description before calling this tool. Never omit."
+        },
+        "fat_g": {
+          "type": "number",
+          "description": "Fat in grams. Required — estimate from the food description before calling this tool. Never omit."
+        },
+        "carbs_g": {
+          "type": "number",
+          "description": "Carbohydrates in grams. Required — estimate from the food description before calling this tool. Never omit."
+        },
+        "alcohol_g": {
+          "type": "number",
+          "description": "Alcohol in grams (not kcal). Optional — include only if alcoholic drinks were consumed. Reference: 1 standard drink ≈ 14g alcohol."
+        },
+        "force": {
+          "type": "boolean",
+          "description": "Optional — set true only when the user has explicitly confirmed they want to log a separate entry despite a duplicate warning. Bypasses duplicate detection."
+        }
+      },
+      "required": [
+        "meal_type",
+        "food_items",
+        "date",
+        "calories",
+        "protein_g",
+        "fat_g",
+        "carbs_g"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_meals",
+    "description": "List all meals logged for a date or date range, including each meal's ID, date, type, food description, and macros. Use this before update_meal or delete_meal to find the correct meal ID. Also useful to answer \"what did I eat today/this week/yesterday?\" or to review what has been logged.\n\nMaximum range: 31 days per call. For longer periods, make multiple calls with sequential date ranges.\n\nINFER — do not ask:\n- date: default to today\n- end_date: if the user asks about a week or range, set end_date to cover the full period (e.g. \"this week\" → date=Monday, end_date=today; \"last 7 days\" → date=7 days ago, end_date=today). For a single day, omit end_date.",
+    "annotations": {
+      "title": "List meals",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Start date (or the single date if no range). Format: YYYY-MM-DD. Required — default to today."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End date for a range query. Format: YYYY-MM-DD. Optional — omit for a single-day lookup."
+        }
+      },
+      "required": [
+        "date"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "update_meal",
+    "description": "Update one or more fields on an existing meal entry. Use when the user wants to correct or change something already logged.\n\nREQUIRED WORKFLOW: always call list_meals first to get the meal ID — never guess or invent an ID. Only send the fields that need to change; omit all others.\n\nASK the user if their intent is ambiguous about which meal to update (e.g. multiple meals of the same type on one day).",
+    "annotations": {
+      "title": "Update a meal",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Meal ID from list_meals. Required — do not proceed without it."
+        },
+        "meal_type": {
+          "type": "string",
+          "enum": [
+            "Breakfast",
+            "Lunch",
+            "Dinner",
+            "Snack",
+            "Post-Workout"
+          ],
+          "description": "Updated meal type. Optional — omit if not changing."
+        },
+        "food_items": {
+          "type": "string",
+          "description": "Updated food description. Optional — omit if not changing."
+        },
+        "calories": {
+          "type": "integer",
+          "description": "Updated total calories (kcal). Optional — omit if not changing."
+        },
+        "protein_g": {
+          "type": "number",
+          "description": "Updated protein in grams. Optional — omit if not changing."
+        },
+        "fat_g": {
+          "type": "number",
+          "description": "Updated fat in grams. Optional — omit if not changing."
+        },
+        "carbs_g": {
+          "type": "number",
+          "description": "Updated carbohydrates in grams. Optional — omit if not changing."
+        },
+        "alcohol_g": {
+          "type": "number",
+          "description": "Updated alcohol in grams. Optional — omit if not changing."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "delete_meal",
+    "description": "Permanently delete a meal entry. Use when the user explicitly asks to remove or delete a logged meal.\n\nREQUIRED WORKFLOW: always call list_meals first to confirm the meal ID. This action is irreversible — if the user's intent is ambiguous (e.g. \"remove that meal\" without specifying which), confirm which meal before deleting.",
+    "annotations": {
+      "title": "Delete a meal",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Meal ID from list_meals. Required — do not proceed without it."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_exercises",
+    "description": "Returns all canonical exercise names from the exercise library, grouped by muscle group. Call this before log_workout or update_workout to match user-described exercise names to canonical ones. Canonical names ensure proper exercise tracking and NSI score calculation.",
+    "annotations": {
+      "title": "List exercises",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_workout",
+    "description": "Log a complete workout session including all exercises, sets, reps, weights, and session metadata. Use when the user describes finishing a workout, lists exercises performed, or asks to log training.\n\nEXERCISE NAMES — call list_exercises first, then match:\n- Before submitting, call list_exercises to get all canonical names from the library.\n- For each exercise the user mentions, find the closest canonical name and use that.\n- \"Chest press\" and \"bench press\" are DISTINCT exercises — chest press is the machine, bench press is the barbell. Do not collapse them. Pass the user's term through and the resolver's aliases will pin each to the right canonical.\n- If no reasonable match exists, use the name as the user stated it.\n- Do NOT ask the user to confirm exercise names — make the best match silently.\n- CRITICAL: The name field must contain ONLY the exercise name — never include reps, weights, sets, or rep schemes. \"Kneeling Crunch\" is correct. \"Kneeling Crunch 15/15/15\" or \"Bench Press 3x10\" is WRONG. Reps and weights go in the sets array, not the name.\n\nSETS — structure each set as its own object in the sets array:\n- If the user says \"3 sets of 15 reps\", create 3 separate set objects each with reps: 15.\n- If the user says \"15/12/10\", create 3 sets with reps 15, 12, and 10 respectively.\n- For isometric holds (planks, dead hangs, wall sits, ab vacuums, etc.), use hold_length_sec instead of reps. A \"30 second plank\" = { hold_length_sec: 30 }.\n- For exercises done with both reps AND a hold (e.g. \"10 reps with 3s pause\"), put reps in reps and note the hold in notes. Only use hold_length_sec for pure isometric exercises where the hold IS the exercise.\n\nINFER — do not ask for these if you can determine them:\n- date: default to today; infer from context (\"yesterday\", \"this morning\")\n- focus_type: infer from the exercises listed (bench/shoulders/triceps=Push, rows/pulldowns/curls=Pull, squats/deadlifts/lunges=Legs, mixed upper=Upper, everything=Full Body)\n- is_bodyweight: infer true for exercises like pull-ups, push-ups, dips, bodyweight squats\n- superset_group: assign the same integer to exercises the user describes doing back-to-back or as a superset\n- slot_type: infer 'warmup' for activation/mobility/light prep exercises at the start of the workout, 'finisher' for burnout/cardio/holds at the end, 'working' (default) for everything else. Most exercises are 'working' — only tag the obvious bookends.\n\nundefined\n\nASK the user (in a single batched question) if missing and not inferable:\n- location, if not mentioned and not established from prior context\n- focus_type, if the exercise list is ambiguous\n- heart_points, if the user uses a tracker that provides them but hasn't mentioned them\n\nRETURNS the new session's ID in the response (formatted as \"[ID NN]\"). Pass that ID to update_workout / delete_workout / get_workout / add_exercises for any follow-up the user asks for in this same conversation.",
+    "annotations": {
+      "title": "Log a workout",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date of the workout. Format: YYYY-MM-DD. Required — default to today."
+        },
+        "focus_type": {
+          "type": "string",
+          "description": "Workout category. Optional — infer from exercises (e.g. Push, Pull, Legs, Upper, Lower, Full Body, Cardio, Mobility). Ask if genuinely unclear."
+        },
+        "location": {
+          "type": "string",
+          "description": "Where the workout took place. Optional — e.g. Gym, Home, Outdoor. Infer from context or ask."
+        },
+        "heart_points_moderate": {
+          "type": "integer",
+          "description": "Moderate-intensity heart points earned (Google Fit or equivalent). Optional — include if the user mentions them."
+        },
+        "heart_points_peak": {
+          "type": "integer",
+          "description": "Peak-intensity heart points earned. Optional — include if mentioned."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-text session notes. Optional — include anything the user mentions about how the session went, PRs hit, how they felt, etc."
+        },
+        "rpe": {
+          "type": "integer"
+        },
+        "exercises": {
+          "type": "array",
+          "description": "Ordered list of all exercises performed. Required.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Exercise name. Required — use the canonical name from list_exercises if a match exists; otherwise use the name as stated."
+              },
+              "superset_group": {
+                "type": "integer",
+                "description": "Optional. Assign the same positive integer to exercises performed back-to-back as a superset (e.g. both get superset_group: 1). Omit or null for standalone exercises."
+              },
+              "slot_type": {
+                "type": "string",
+                "enum": [
+                  "warmup",
+                  "working",
+                  "finisher"
+                ],
+                "description": "Optional. Tag this exercise as warmup, working (default), or finisher. Infer from context: warmup for activation/mobility/light prep at start, finisher for burnout/holds/cardio at end."
+              },
+              "sets": {
+                "type": "array",
+                "description": "All sets performed for this exercise, in order. Required.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "reps": {
+                      "type": "integer",
+                      "description": "Reps completed this set. Optional — include if stated. Do NOT use for isometric holds; use hold_length_sec instead."
+                    },
+                    "weight_lb": {
+                      "type": "number",
+                      "description": "Load in pounds. For band exercises, this is the band label weight (e.g. 80 for an 80lb band). Optional — omit for bodyweight exercises."
+                    },
+                    "is_bodyweight": {
+                      "type": "boolean",
+                      "description": "True if no external weight was used. Optional — infer true for pull-ups, push-ups, dips, etc."
+                    },
+                    "is_band": {
+                      "type": "boolean",
+                      "description": "True if resistance comes from a band (not cable or free weight). Important for NSI scoring — band weight is converted using a movement-specific factor. Infer from context: \"band face pull\", \"80lb band\", etc."
+                    },
+                    "band_label_lb": {
+                      "type": "number",
+                      "description": "Band label weight in pounds (e.g. 80 for an 80lb band). Use when is_band is true. If omitted, weight_lb is used as the band label."
+                    },
+                    "hold_length_sec": {
+                      "type": "integer",
+                      "description": "Hold duration in seconds for isometric exercises (planks, dead hangs, wall sits, ab vacuums, etc.). Use instead of reps when the exercise is a timed hold."
+                    },
+                    "rpe": {
+                      "type": "integer"
+                    },
+                    "notes": {
+                      "type": "string",
+                      "description": "Per-set notes. Optional — e.g. \"failed last rep\", \"paused at bottom\"."
+                    }
+                  }
+                }
+              }
+            },
+            "required": [
+              "name",
+              "sets"
+            ]
+          }
+        }
+      },
+      "required": [
+        "date",
+        "exercises"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_workouts",
+    "description": "List workout sessions within a date range, returning each session's ID, date, focus type, location, and session-level NSI score with rating. Use this before get_workout to find a session ID. Also useful to answer questions like \"how many times did I train this week?\", \"when was my last leg day?\", \"did I work out yesterday?\", or \"how is my NSI trending?\".\n\nEach row includes the session NSI (mean of per-exercise NSIs after dropping anything below 50% of the user's median for that exercise) and its rating band (Below Average, Novice, Average, Intermediate, Advanced, Elite). 100 = exactly at the population intermediate standard for the user's bodyweight, age, and sex. Use the rolling average across rows to answer NSI trend questions.\n\nMaximum range: 90 days per call. For longer periods (PR lookups, \"have I ever done X\", \"when was the last time I did Y\"), make MULTIPLE sequential calls walking backwards — e.g. days 0-90, then 90-180, then 180-270 — until you find what you need or have covered a reasonable horizon. Do not give up after one call.\n\nINFER — default start_date to 7 days ago and end_date to today. Widen the range freely up to 90 days for trend questions (\"how is my NSI trending over the past 90 days\" → start_date=90 days ago). Chain calls for anything older.",
+    "annotations": {
+      "title": "List workouts",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Start of date range. Format: YYYY-MM-DD. Optional — defaults to 7 days ago."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End of date range. Format: YYYY-MM-DD. Optional — defaults to today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "get_workout",
+    "description": "Retrieve the full detail of a specific workout session: all exercises, sets, reps, weights, superset groupings, heart points, session notes, plus NSI scoring at every grain. Use to answer detailed questions about a past workout, review training before making recommendations, confirm what was logged, or analyze how a session compared to population strength standards.\n\nNSI fields returned:\n- Session NSI and rating in the header.\n- Per-exercise NSI (the max set NSI for that exercise), rating band, est. 1RM, and the population_1rm_lb / population_reps benchmarks the score was measured against — so you can answer \"how did I do on bench today vs population averages\" directly.\n- Per-set NSI and est. 1RM on each set, so you can identify which exact set drove the per-exercise score.\n\nREQUIRED WORKFLOW: call list_workouts first to find the session ID — never guess it.",
+    "annotations": {
+      "title": "Get workout detail",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "integer",
+          "description": "Session ID from list_workouts. Required."
+        }
+      },
+      "required": [
+        "session_id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "get_exercise_history",
+    "description": "Look up everything the user has ever done for a single exercise: their all-time PR plus recent performance. Exercise-centric — one exercise across many sessions.\n\nUSE THIS FOR:\n- PR lookups — \"what's my bench PR?\", \"what's my best banded hip thrust?\", \"have I ever squatted 315?\". Returns the est. 1RM PR and the exact set it came from (date, weight, reps, RPE, banded vs unbanded, superset siblings, session notes), plus rep-range bests (1RM/3RM/5RM/10RM).\n- Recent-activity questions — \"how has my squat been lately?\", \"when did I last do deadlifts?\", \"show me my last few overhead press sessions\". Returns the most recent N sessions containing the exercise, formatted like get_workout.\n- Trend questions — \"am I getting stronger on incline DB press?\". Includes a one-line delta of current best vs ~30-90 days ago.\n\nBanded and unbanded PRs are returned side-by-side when both exist, since band assistance materially changes the load.\n\nWHEN NOT TO USE:\n- For a full session (every exercise in one workout), use get_workout.\n- For a list of sessions across a date window regardless of exercise, use list_workouts.\n\nINFER — do not ask:\n- exercise_name: take the user's words; the tool resolves to the canonical name. If they've never logged it, the tool says so.\n- recent_limit: default 10 sessions.\n- since_date: optional — narrows only the Recent block. The PR is always all-time.",
+    "annotations": {
+      "title": "Exercise history",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "exercise_name": {
+          "type": "string",
+          "description": "Exercise to look up. Required. Free-text — the tool resolves to canonical (e.g. \"bench\" → \"Bench Press\")."
+        },
+        "recent_limit": {
+          "type": "integer",
+          "description": "How many recent sessions containing this exercise to surface. Optional — default 10, capped at 50."
+        },
+        "since_date": {
+          "type": "string",
+          "description": "Optional YYYY-MM-DD lower bound for the Recent block. Does not affect the PR section, which is always all-time."
+        }
+      },
+      "required": [
+        "exercise_name"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "delete_workout",
+    "description": "Permanently delete a workout session and all its exercises and sets. Use when the user wants to remove a logged workout entirely.\n\nREQUIRED WORKFLOW: call list_workouts first to confirm the session ID — never guess it. This action is irreversible and removes the session, all supersets, and all sets. If the user's intent is ambiguous, confirm which session before deleting.",
+    "annotations": {
+      "title": "Delete a workout",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "integer",
+          "description": "Session ID from list_workouts. Required — do not proceed without it."
+        }
+      },
+      "required": [
+        "session_id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "update_workout",
+    "description": "Update a workout session — correct session metadata, fix set values, rename exercises, add new exercises, remove exercises, or move exercises between supersets. Use for any post-log correction or modification.\n\nREQUIRED WORKFLOW:\n1. Call list_workouts to find the session ID\n2. Call get_workout to see full detail — set_id values, exercise names, and superset slot names (SS1, SS2, WarmUp, Finisher)\n3. If adding or renaming, call list_exercises first to get the canonical name\n4. Call this tool with only the fields that need to change — all operation types can be combined in one call\n\nOPERATIONS:\n- Metadata: date, focus_type, location, notes, rpe, heart_points_moderate/peak\n- Fix sets: set_updates — patch reps/weight/notes on specific sets by set_id\n- Rename exercises: rename_exercises — change the exercise name on every set of a logged exercise (preserves set IDs, RPE, notes, and rebuilds NSI for the new exercise). Use this whenever the user says \"actually that was X, not Y\" or \"rename Bench Press to Push Press\" — never use remove + add for renames.\n- Remove exercises: remove_exercises — deletes all sets for named exercises; empties slots are removed automatically\n- Add exercises: add_exercises — adds new exercises with sets; use to_superset_slot to join an existing slot (e.g. \"SS2\") or omit to create a new standalone slot\n- Move exercises: move_exercises — reassigns an exercise to a different superset slot; use \"new\" as to_superset_slot to pull it out as a standalone slot\n\nINFER — do not ask:\n- Which session to update: use list_workouts + get_workout to find it\n- set_id values: always read from get_workout — never guess\n- Slot names: read from get_workout output (SS1, SS2, WarmUp, Finisher)\n- Exercise canonical names: resolve via list_exercises before adding or renaming",
+    "annotations": {
+      "title": "Update a workout",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "integer",
+          "description": "Session ID to update. Required."
+        },
+        "date": {
+          "type": "string",
+          "description": "Updated session date. Format: YYYY-MM-DD. Optional."
+        },
+        "focus_type": {
+          "type": "string",
+          "description": "Updated workout category (e.g. Push, Pull, Legs). Optional."
+        },
+        "location": {
+          "type": "string",
+          "description": "Updated location (e.g. Gym, Home). Optional."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Updated session notes. Optional."
+        },
+        "rpe": {
+          "type": "integer"
+        },
+        "heart_points_moderate": {
+          "type": "integer",
+          "description": "Updated moderate heart points. Optional."
+        },
+        "heart_points_peak": {
+          "type": "integer",
+          "description": "Updated peak heart points. Optional."
+        },
+        "set_updates": {
+          "type": "array",
+          "description": "Individual set corrections. Optional.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "set_id": {
+                "type": "integer",
+                "description": "Set ID from get_workout output (shown as set_id:N). Required per entry."
+              },
+              "reps": {
+                "type": "integer",
+                "description": "Corrected rep count. Optional."
+              },
+              "weight_lb": {
+                "type": "number",
+                "description": "Corrected weight in pounds. Optional."
+              },
+              "is_band": {
+                "type": "boolean",
+                "description": "True if resistance band. Set to true when the user says an exercise was done with a band. Optional."
+              },
+              "band_label_lb": {
+                "type": "number",
+                "description": "Band label weight in pounds. Defaults to weight_lb when is_band is true and this is omitted. Optional."
+              },
+              "hold_length_sec": {
+                "type": "integer",
+                "description": "Corrected hold duration in seconds. Optional."
+              },
+              "rpe": {
+                "type": "integer"
+              },
+              "set_notes": {
+                "type": "string",
+                "description": "Updated per-set note. Optional."
+              }
+            },
+            "required": [
+              "set_id"
+            ]
+          }
+        },
+        "rename_exercises": {
+          "type": "array",
+          "description": "Rename one or more logged exercises in place. Preserves set IDs, RPE, notes, and triggers NSI re-computation against the renamed exercise. Optional.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from_name": {
+                "type": "string",
+                "description": "Current exercise name from get_workout (exact match). Required."
+              },
+              "to_name": {
+                "type": "string",
+                "description": "New exercise name. Use the canonical name from list_exercises whenever a match exists. Required."
+              }
+            },
+            "required": [
+              "from_name",
+              "to_name"
+            ]
+          }
+        },
+        "remove_exercises": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Exercise names to remove from the session. Use exact names from get_workout. All sets are deleted; empty slots are removed automatically."
+        },
+        "add_exercises": {
+          "type": "array",
+          "description": "New exercises to add to this session. Call list_exercises first to get canonical names. Optional.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Exercise name — use canonical name from list_exercises. Required."
+              },
+              "to_superset_slot": {
+                "type": "string",
+                "description": "Existing slot to join (e.g. \"SS1\", \"SS2\", \"WarmUp\"). Omit to create a new standalone slot."
+              },
+              "slot_type": {
+                "type": "string",
+                "enum": [
+                  "warmup",
+                  "working",
+                  "finisher"
+                ],
+                "description": "Slot type when creating a new slot. Default: working. Ignored if to_superset_slot is provided."
+              },
+              "sets": {
+                "type": "array",
+                "description": "All sets for this exercise. Required.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "reps": {
+                      "type": "integer",
+                      "description": "Reps this set. Optional."
+                    },
+                    "weight_lb": {
+                      "type": "number",
+                      "description": "Load in pounds. Optional."
+                    },
+                    "is_bodyweight": {
+                      "type": "boolean",
+                      "description": "True if no external weight. Optional."
+                    },
+                    "is_band": {
+                      "type": "boolean",
+                      "description": "True if resistance band. Optional."
+                    },
+                    "band_label_lb": {
+                      "type": "number",
+                      "description": "Band label weight in pounds. Optional."
+                    },
+                    "hold_length_sec": {
+                      "type": "integer",
+                      "description": "Hold duration in seconds for isometric exercises. Optional."
+                    },
+                    "rpe": {
+                      "type": "integer"
+                    },
+                    "notes": {
+                      "type": "string",
+                      "description": "Per-set notes. Optional."
+                    }
+                  }
+                }
+              }
+            },
+            "required": [
+              "name",
+              "sets"
+            ]
+          }
+        },
+        "move_exercises": {
+          "type": "array",
+          "description": "Move exercises between superset slots. Optional.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "exercise_name": {
+                "type": "string",
+                "description": "Exact exercise name from get_workout. Required."
+              },
+              "to_superset_slot": {
+                "type": "string",
+                "description": "Target slot name (e.g. \"SS1\", \"SS2\", \"WarmUp\", \"Finisher\") or \"new\" to make it a standalone slot. Required."
+              }
+            },
+            "required": [
+              "exercise_name",
+              "to_superset_slot"
+            ]
+          }
+        }
+      },
+      "required": [
+        "session_id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_wearable",
+    "description": "Log daily wearable metrics (RHR, HRV, Heart Points / AZM, VO2max, stress, and supplemental steps).\n\nSTEPS — READ THIS BEFORE USING step_count:\nManual step_count is ADDITIVE. It adds on top of whatever a connected wearable (Fitbit, Oura, Apple Health, Health Connect) already recorded for that day. It does NOT replace or override device data.\n\nONLY use step_count when the user explicitly says they walked steps their device did NOT capture — e.g. left the phone at home, battery died, device wasn't worn. If the user says their sync is wrong, their steps look doubled, or they want to fix/correct/override/replace Fitbit/Oura/Apple Health data: do NOT pass step_count — explain that manual steps add on top, and that sync issues should be investigated at the device level.\n\nALL OTHER FIELDS (RHR, HRV, AZM, VO2max, stress) replace the existing manual value for that day and are safe to use for corrections.\n\nINFER — do not ask:\n- date: default to today unless the user says otherwise\n\nIDEMPOTENT: If the values you'd log already exist for that date (from any source), the tool returns a no-op success — report this as \"already had data\" not \"failed\".",
+    "annotations": {
+      "title": "Log wearable data",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date for the entry. Format: YYYY-MM-DD. Default to today."
+        },
+        "step_count": {
+          "type": "integer",
+          "description": "Supplemental steps NOT captured by any connected wearable. ADDITIVE — adds to device data, never replaces it. Only use when user explicitly says their device missed these steps."
+        },
+        "resting_hr": {
+          "type": "integer",
+          "description": "Resting heart rate in BPM. Optional."
+        },
+        "hrv_morning": {
+          "type": "number",
+          "description": "Morning HRV in milliseconds (RMSSD or similar). Optional."
+        },
+        "active_zone_min_moderate": {
+          "type": "integer",
+          "description": "Heart Points (also called Active Zone Minutes by Fitbit) at moderate intensity. Optional."
+        },
+        "active_zone_min_peak": {
+          "type": "integer",
+          "description": "Heart Points (also called Active Zone Minutes by Fitbit) at peak intensity. Optional."
+        },
+        "vo2max_estimate": {
+          "type": "number",
+          "description": "VO2max estimate (ml/kg/min). Optional."
+        },
+        "stress_score": {
+          "type": "integer",
+          "description": "Stress score (0–100 scale). Optional."
+        },
+        "confirm_supplemental": {
+          "type": "boolean",
+          "description": "Set to true ONLY after the user has explicitly confirmed these steps were walked without their device and were not captured. Do not set true based on your own inference."
+        }
+      },
+      "required": [
+        "date"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_wearable_data",
+    "description": "List daily wearable data (steps, RHR, HRV, Heart Points / AZM including the vigorous-intensity breakdown, VO2max, stress) within a date range. Use when the user asks about their step count, heart rate, HRV trends, vigorous minutes, or any wearable metrics over time.\n\nHeart Points (a.k.a. Active Zone Minutes) are shown as a daily total plus, when the per-zone breakdown is available, a moderate (1 pt/min, 50–69% max HR) vs vigorous (2 pts/min, 70%+ max HR — Cardio + Peak zones) split.\n\nINFER — do not ask:\n- start_date: default to 14 days ago\n- end_date: default to today",
+    "annotations": {
+      "title": "List wearable data",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Start of date range. Format: YYYY-MM-DD. Default: 14 days ago."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End of date range. Format: YYYY-MM-DD. Default: today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_body_metrics",
+    "description": "Log or update body composition metrics for a given date. Use when the user shares weight, body fat percentage, or any other body composition reading — whether typed manually, copy-pasted from a smart scale app, or described from a photo of a scale display.\n\nPROACTIVE DATA COLLECTION: If the user hasn't shared their data yet, ask them to copy-paste the output from their scale app or upload a photo of the display — this lets you parse all fields at once instead of asking one by one.\n\nINFER — do not ask:\n- date: default to today; infer from context (\"this morning\", \"yesterday\")\n- derived fields (lean_mass_lb, fat_mass_lb): calculate from weight and body fat % if possible — lean = weight × (1 - bf%/100), fat = weight × bf%/100\n\nYou may log any subset of fields. One row per day. Calling this tool twice on the same date updates the existing entry (upsert).",
+    "annotations": {
+      "title": "Log body metrics",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date of the measurement. Format: YYYY-MM-DD. Default to today."
+        },
+        "weight_lb": {
+          "type": "number",
+          "description": "Body weight in pounds. Optional."
+        },
+        "body_fat_pct": {
+          "type": "number",
+          "description": "Body fat percentage (0–100). Optional."
+        },
+        "lean_mass_lb": {
+          "type": "number",
+          "description": "Lean (non-fat) mass in pounds. Optional — calculate from weight and body fat % if not explicitly stated."
+        },
+        "fat_mass_lb": {
+          "type": "number",
+          "description": "Fat mass in pounds. Optional — calculate from weight and body fat % if not explicitly stated."
+        },
+        "bmi": {
+          "type": "number",
+          "description": "Body mass index. Optional — include if the scale or app reports it."
+        },
+        "visceral_fat_rating": {
+          "type": "number",
+          "description": "Visceral fat rating (scale varies by device, typically 1–59). Optional."
+        },
+        "hydration_pct": {
+          "type": "number",
+          "description": "Body water/hydration percentage. Optional."
+        },
+        "bone_mass_lb": {
+          "type": "number",
+          "description": "Bone mass in pounds. Optional."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any context worth noting (e.g. \"post-workout\", \"morning fasted\"). Optional."
+        }
+      },
+      "required": [
+        "date"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_body_metrics",
+    "description": "List body composition entries within a date range. Use when the user asks about their weight history, body fat trend, or any body metrics over time.\n\nINFER — do not ask:\n- start_date: default to 30 days ago\n- end_date: default to today",
+    "annotations": {
+      "title": "List body metrics",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Start of date range. Format: YYYY-MM-DD. Default: 30 days ago."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End of date range. Format: YYYY-MM-DD. Default: today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_sleep",
+    "description": "Log a sleep entry. Use when the user shares sleep data — total duration, score, or stage breakdown — from Fitbit, Oura, Whoop, Apple Health, or manual recall.\n\nPROACTIVE DATA COLLECTION: If the user says they want to log sleep but hasn't shared numbers, ask: \"How many hours did you sleep, and do you have a sleep score or stage breakdown from your tracker?\" They can paste or describe the summary screen.\n\nINFER — do not ask:\n- date: the night's date (use the date they woke up, or the night they went to bed — either is fine); default to today\n\nYou may log any subset of fields. One row per day. Calling this tool twice on the same date updates the existing entry (upsert). Entries made through this tool are always tagged as manual — the wearable-provider sources (Fitbit/Oura/Apple Health) are reserved for the actual auto-sync pipelines.",
+    "annotations": {
+      "title": "Log sleep",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date of the sleep entry (night ending on this date). Format: YYYY-MM-DD. Default to today."
+        },
+        "total_hours": {
+          "type": "number",
+          "description": "Total sleep duration in hours (e.g. 7.5). Optional."
+        },
+        "sleep_score": {
+          "type": "integer",
+          "description": "Sleep quality score on a 0-100 scale (matches wearable scoring). For a 1-10 self-rating, multiply by 10 first. Optional."
+        },
+        "deep_sleep_hours": {
+          "type": "number",
+          "description": "Deep/slow-wave sleep in hours. Optional — include if the tracker reports it."
+        },
+        "rem_sleep_hours": {
+          "type": "number",
+          "description": "REM sleep in hours. Optional — include if the tracker reports it."
+        },
+        "light_sleep_hours": {
+          "type": "number",
+          "description": "Light sleep in hours. Optional — include if the tracker reports it."
+        },
+        "awakenings": {
+          "type": "integer",
+          "description": "Number of times woken during the night. Optional."
+        }
+      },
+      "required": [
+        "date"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_sleep",
+    "description": "List sleep log entries within a date range. Use when the user asks about their sleep history, trends, or quality over time.\n\nINFER — do not ask:\n- start_date: default to 14 days ago\n- end_date: default to today",
+    "annotations": {
+      "title": "List sleep",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Start of date range. Format: YYYY-MM-DD. Default: 14 days ago."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End of date range. Format: YYYY-MM-DD. Default: today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_lab_markers",
+    "description": "Returns all LOINC-coded markers in the reference library: canonical name, LOINC code, panel, typical unit, and common aliases. Call this BEFORE log_lab_results to match user-provided marker names to canonical entries — same pattern as list_exercises for workouts. Prevents name drift and ensures trending works across lab visits.",
+    "annotations": {
+      "title": "List lab markers",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_lab_results",
+    "description": "Log one or more blood test or biomarker results. Use when the user shares lab values — whether copy-pasted from a Quest/LabCorp PDF, typed from a paper report, or described from a photo of their results.\n\nREQUIRED WORKFLOW:\n1. Call list_lab_markers to get canonical names and LOINC codes\n2. For each marker the user provides, find the best match in the library and use its canonical marker_name and loinc_code\n3. If no match exists, use the name as stated and omit loinc_code\n\nPROACTIVE DATA COLLECTION: If the user says they have lab results but hasn't shared them, prompt: \"You can paste the text from your lab report PDF, or upload a photo of the results page — I'll parse all the values at once.\"\n\nINFER — do not ask:\n- date: look for a collection/drawn date in the pasted text; default to today if absent\n- panel_name: use the panel_name from list_lab_markers for matched markers; infer for unmatched\n- flag: extract from the report if present (\"H\", \"L\", \"HH\", \"LL\", \"A\")\n- ref_range_low/high: parse from the report if a reference range is shown\n- lab_name: read from the report header; same value for all markers in a visit\n\nSubmit all markers from a single lab visit in one call.",
+    "annotations": {
+      "title": "Log lab results",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "description": "Array of individual lab marker results. Required — submit all markers from the visit in a single call.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "Collection/draw date. Format: YYYY-MM-DD. Required."
+              },
+              "panel_name": {
+                "type": "string",
+                "description": "Panel name from list_lab_markers, or inferred. Required."
+              },
+              "marker_name": {
+                "type": "string",
+                "description": "Canonical name from list_lab_markers if matched; otherwise name as stated. Required."
+              },
+              "loinc_code": {
+                "type": "string",
+                "description": "LOINC code from list_lab_markers. Include for all matched markers."
+              },
+              "result_value": {
+                "type": "number",
+                "description": "Numeric result value. Required."
+              },
+              "result_unit": {
+                "type": "string",
+                "description": "Unit of measurement (e.g. \"mg/dL\"). Optional but include if present."
+              },
+              "flag": {
+                "type": "string",
+                "description": "Lab flag: \"H\", \"L\", \"HH\", \"LL\", or \"A\". Optional."
+              },
+              "ref_range_low": {
+                "type": "number",
+                "description": "Lab-reported reference range lower bound. Optional."
+              },
+              "ref_range_high": {
+                "type": "number",
+                "description": "Lab-reported reference range upper bound. Optional."
+              },
+              "lab_name": {
+                "type": "string",
+                "description": "Lab name (e.g. \"Quest Diagnostics\", \"LabCorp\"). Optional."
+              },
+              "notes": {
+                "type": "string",
+                "description": "Additional notes. Optional."
+              }
+            },
+            "required": [
+              "date",
+              "panel_name",
+              "marker_name",
+              "result_value"
+            ]
+          }
+        }
+      },
+      "required": [
+        "results"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_lab_results",
+    "description": "List lab/biomarker results within a date range. Use when the user asks about their lab history, blood work trends, or specific marker values over time. Optionally filter by panel or marker name.\n\nINFER — do not ask:\n- start_date: default to 365 days ago (labs are infrequent)\n- end_date: default to today",
+    "annotations": {
+      "title": "List lab results",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Start of date range. Format: YYYY-MM-DD. Default: 365 days ago."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End of date range. Format: YYYY-MM-DD. Default: today."
+        },
+        "panel_name": {
+          "type": "string",
+          "description": "Optional — filter to a specific panel (e.g. \"Lipid Panel\")."
+        },
+        "marker_name": {
+          "type": "string",
+          "description": "Optional — filter to a specific marker (e.g. \"LDL Cholesterol\")."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_injury",
+    "description": "Log a new injury or aggravation. Use when the user mentions getting hurt, feeling pain, straining something, or describes an injury. Injuries are date ranges — they start on a date and are ongoing until an end_date is set.\n\nINFER — do not ask:\n- start_date: default to today\n- severity: estimate from description (minor twinge=2-3, moderate pain=5-6, severe/acute=8-9)\n- status: default to 'Active' for new injuries\n- affected_movements: infer from body part and injury type (e.g. shoulder strain → pressing, overhead)\n- side: infer from description if mentioned (e.g. \"right shoulder\" → Right)\n\nASK only if body_part is entirely unclear.",
+    "annotations": {
+      "title": "Log an injury",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Date injury started. Format: YYYY-MM-DD. Default: today."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "Date injury resolved. Format: YYYY-MM-DD. Default: null (ongoing). Set when injury is fully resolved."
+        },
+        "body_part": {
+          "type": "string",
+          "description": "Body part affected (e.g. 'Shoulder', 'Lower Back', 'Knee'). Required."
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "Left",
+            "Right",
+            "Both",
+            "Center"
+          ],
+          "description": "Side of body. Optional — infer from description."
+        },
+        "injury_type": {
+          "type": "string",
+          "description": "Type of injury (e.g. 'Strain', 'Tendonitis', 'Sprain', 'Disc', 'Soreness', 'Acute'). Required — infer from description."
+        },
+        "severity": {
+          "type": "integer",
+          "description": "Severity 1-10 (1=minor, 10=severe). Required — estimate from description."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Active",
+            "Monitoring",
+            "Resolved"
+          ],
+          "description": "Status. Default: 'Active'. Auto-set to 'Resolved' if end_date is provided."
+        },
+        "affected_movements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Movements affected (e.g. ['Pressing', 'Overhead', 'Bench Press']). Infer from body part."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional context about how injury occurred, symptoms, etc. Optional."
+        }
+      },
+      "required": [
+        "body_part",
+        "injury_type",
+        "severity"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_injuries",
+    "description": "List injuries from the injury log. Use when the user asks about their injury history, current injuries, or rehab progress. Returns entry IDs needed for update_injury and delete_injury. Defaults to active and monitoring injuries.\n\nINFER — do not ask:\n- status: default to showing Active and Monitoring; use 'all' to include Resolved; use 'Resolved' for history only.",
+    "annotations": {
+      "title": "List injuries",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "Active",
+            "Monitoring",
+            "Resolved",
+            "all"
+          ],
+          "description": "Filter by status. Default: Active + Monitoring."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "update_injury",
+    "description": "Update an existing injury entry. Use when the user reports an injury is improving, worsening, resolved, or wants to change details. When severity changes, the new value is automatically tracked in the severity history for trend analysis.\n\nREQUIRED WORKFLOW: call list_injuries first to get the injury ID. Only send fields that need to change.\nSetting end_date automatically marks the injury as Resolved.\nUse severity_date to backfill historical severity changes (e.g., \"it was a 7 in January, dropped to 4 by March\").",
+    "annotations": {
+      "title": "Update an injury",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Injury ID from list_injuries. Required."
+        },
+        "start_date": {
+          "type": "string",
+          "description": "Updated start date. Format: YYYY-MM-DD. Optional."
+        },
+        "severity": {
+          "type": "integer",
+          "description": "Updated severity 1-10. Optional. Change is tracked in severity history."
+        },
+        "severity_date": {
+          "type": "string",
+          "description": "Date for the severity entry in the history log. Format: YYYY-MM-DD. Default: today. Use to backfill past severity changes."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Active",
+            "Monitoring",
+            "Resolved"
+          ],
+          "description": "Updated status. Optional."
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "Left",
+            "Right",
+            "Both",
+            "Center"
+          ],
+          "description": "Updated side. Optional."
+        },
+        "affected_movements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Updated list of affected movements. Optional."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "Date injury resolved. Format: YYYY-MM-DD. Auto-sets status to Resolved."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Updated notes (replaces existing). Optional."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "delete_injury",
+    "description": "Permanently delete an injury entry by ID. Use list_injuries first to confirm the injury ID before deleting. Also removes all severity history for that injury.\n\nINFER — do not ask:\n- id: must be provided or looked up via list_injuries first",
+    "annotations": {
+      "title": "Delete an injury",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Injury ID to delete. Required."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_wellbeing",
+    "description": "Log subjective wellbeing ratings for a day, week, month, or custom date range. Use when the user describes how they feel — energy level, mood, stress, or muscle soreness.\n\nSupports single-day entries (\"how I feel today\") and period entries (\"this week was stressful\", \"March was great\").\n\nIf an overlapping entry already exists for the requested period, returns a warning with the conflicting entry IDs — the user must update or delete existing entries first.\n\nINFER — do not ask:\n- period_start: default to today\n- period_end: default to same as period_start (single day). For \"this week\" use Monday–Sunday, for \"this month\" use first–last day.\n- ratings: estimate from description (\"exhausted\"=2, \"great energy\"=8, \"stressed out\"=8 stress, \"feeling good\"=7 mood)\n\nYou may log any subset of rating fields.",
+    "annotations": {
+      "title": "Log wellbeing",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "period_start": {
+          "type": "string",
+          "description": "Start date of period. Format: YYYY-MM-DD. Default: today."
+        },
+        "period_end": {
+          "type": "string",
+          "description": "End date of period. Format: YYYY-MM-DD. Default: same as period_start (single day). Use for week/month/custom ranges."
+        },
+        "energy": {
+          "type": "integer",
+          "description": "Energy level 1-10 (1=exhausted, 10=wired). Optional."
+        },
+        "mood": {
+          "type": "integer",
+          "description": "Mood 1-10 (1=terrible, 10=excellent). Optional."
+        },
+        "stress": {
+          "type": "integer",
+          "description": "Stress level 1-10 (1=calm, 10=overwhelmed). Optional."
+        },
+        "soreness": {
+          "type": "integer",
+          "description": "Muscle soreness 1-10 (1=none, 10=extreme DOMS). Optional."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-text notes about how you feel. Optional."
+        }
+      },
+      "required": [
+        "period_start"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_wellbeing",
+    "description": "List wellbeing log entries within a date range. Use when the user asks about their mood, energy, stress, or soreness trends over time. Returns entry IDs needed for update_wellbeing and delete_wellbeing.\n\nINFER — do not ask:\n- start_date: default to 14 days ago\n- end_date: default to today",
+    "annotations": {
+      "title": "List wellbeing",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Start of date range. Format: YYYY-MM-DD. Default: 14 days ago."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End of date range. Format: YYYY-MM-DD. Default: today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "update_wellbeing",
+    "description": "Update an existing wellbeing entry by ID. Use list_wellbeing first to find the entry ID. Only updates fields that are provided — omitted fields remain unchanged.\n\nINFER — do not ask:\n- id: must be provided or looked up via list_wellbeing first",
+    "annotations": {
+      "title": "Update wellbeing",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Wellbeing entry ID from list_wellbeing. Required."
+        },
+        "energy": {
+          "type": "integer",
+          "description": "Updated energy 1-10. Optional."
+        },
+        "mood": {
+          "type": "integer",
+          "description": "Updated mood 1-10. Optional."
+        },
+        "stress": {
+          "type": "integer",
+          "description": "Updated stress 1-10. Optional."
+        },
+        "soreness": {
+          "type": "integer",
+          "description": "Updated soreness 1-10. Optional."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Updated notes (replaces existing). Optional."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "delete_wellbeing",
+    "description": "Permanently delete a wellbeing entry by ID. Use list_wellbeing first to confirm the entry ID before deleting.\n\nINFER — do not ask:\n- id: must be provided or looked up via list_wellbeing first",
+    "annotations": {
+      "title": "Delete a wellbeing entry",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Wellbeing entry ID to delete. Required."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_supplements",
+    "description": "List the user's medications and supplements. Use when the user asks what medications or supplements they're taking, asks to review their stack, or you need IDs before calling manage_supplement.\n\nINFER — do not ask:\n- filter: default to 'active' (current items); use 'all' if the user asks about history or a specific past period; use 'historical' for ended items only.\n- category: omit to return both medications and supplements; set to 'medication' or 'supplement' to filter by type.\n\nReturns each item's id, category, name, brand, dose, schedule, start_date, and end_date.",
+    "annotations": {
+      "title": "List supplements",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "enum": [
+            "active",
+            "historical",
+            "all"
+          ],
+          "description": "Which items to return. Default: 'active'."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "medication",
+            "supplement"
+          ],
+          "description": "Filter by category. Omit for both."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "manage_supplement",
+    "description": "Add, update, end, or delete a medication or supplement. Use when the user describes their stack, adds a new medication or supplement, changes a dose or schedule, says they stopped taking something, or wants to remove an entry.\n\nINFER — do not ask:\n- action: 'add' when the user describes a new item; 'update' when changing a field; 'end' when the user says they stopped or finished a course; 'delete' only if they want to remove the record entirely\n- category: infer 'medication' for prescription drugs, OTC medications, and pharmaceuticals; infer 'supplement' for vitamins, minerals, herbs, and other dietary supplements. Default to 'supplement' if unclear.\n- start_date: default to today for new entries\n- end_date for 'end' action: default to today unless the user specifies a different date\n\nASK the user only if name is missing for a new entry or if the intent between 'end' (set end_date) and 'delete' (remove record) is ambiguous.\n\nREQUIRED for 'update', 'end', 'delete': call list_supplements first to get the id.",
+    "annotations": {
+      "title": "Manage supplements",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "add",
+            "update",
+            "end",
+            "delete"
+          ],
+          "description": "What to do. Required."
+        },
+        "id": {
+          "type": "integer",
+          "description": "ID from list_supplements. Required for update, end, delete."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "medication",
+            "supplement"
+          ],
+          "description": "Category: 'medication' for drugs/pharmaceuticals, 'supplement' for vitamins/minerals/herbs. Default: 'supplement'."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name (e.g. 'Magnesium Glycinate' or 'Metformin'). Required for add."
+        },
+        "brand": {
+          "type": "string",
+          "description": "Brand name. Optional."
+        },
+        "form": {
+          "type": "string",
+          "description": "Physical form: pill, capsule, tablet, softgel, powder, liquid, gummy, other. Optional."
+        },
+        "dose_amount": {
+          "type": "number",
+          "description": "Numeric dose quantity (e.g. 2 for '2 pills'). Required for add."
+        },
+        "dose_unit": {
+          "type": "string",
+          "description": "Unit for dose_amount: pills, capsules, tablets, softgels, g, mg, ml, IU, mcg, tbsp, scoop. Required for add."
+        },
+        "dose_per_unit": {
+          "type": "number",
+          "description": "Amount per individual unit (e.g. 240 for '240mg per pill'). Optional."
+        },
+        "unit_label": {
+          "type": "string",
+          "description": "Label for dose_per_unit (e.g. 'mg', 'IU'). Optional."
+        },
+        "frequency_type": {
+          "type": "string",
+          "enum": [
+            "daily",
+            "weekly",
+            "monthly",
+            "as_needed"
+          ],
+          "description": "Frequency category. Optional — default 'daily'."
+        },
+        "times_per_period": {
+          "type": "integer",
+          "description": "How many times per period (e.g. 2 for twice per week). Optional — default 1."
+        },
+        "period_unit": {
+          "type": "string",
+          "enum": [
+            "day",
+            "week",
+            "month"
+          ],
+          "description": "The period for times_per_period. Optional."
+        },
+        "time_of_day": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "When during the day: ['morning'], ['morning','evening'], ['night'], etc. Optional."
+        },
+        "start_date": {
+          "type": "string",
+          "description": "Start date (YYYY-MM-DD). Required for add — default to today."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End date (YYYY-MM-DD). Set for 'end' action — default to today. Null means currently active."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-text notes. Optional."
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_supplement_taken",
+    "description": "Mark a medication or supplement as taken or not taken for a specific date. Only relevant when the user has daily tracking mode enabled. Use when the user says they took (or missed) a medication or supplement on a particular day.\n\nINFER — do not ask:\n- date: default to today\n- taken: default to true (marking as taken)\n\nREQUIRED WORKFLOW: call list_supplements first to get the id if the user refers to it by name.",
+    "annotations": {
+      "title": "Log supplement taken",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "supplement_id": {
+          "type": "integer",
+          "description": "Supplement ID from list_supplements. Required."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date (YYYY-MM-DD). Default to today."
+        },
+        "taken": {
+          "type": "boolean",
+          "description": "true = taken, false = missed. Default: true."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional note for this check-in."
+        }
+      },
+      "required": [
+        "supplement_id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_recovery_strategies",
+    "description": "List the user's recovery and mindfulness strategies. Use when the user asks about their recovery practices, mindfulness routines, or you need strategy IDs before logging a session.\n\nINFER — do not ask:\n- filter: default to 'active'; use 'all' for history; use 'historical' for ended strategies only.\n\nReturns each strategy's id, name, category, schedule, start_date, and end_date.",
+    "annotations": {
+      "title": "List recovery strategies",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "type": "string",
+          "enum": [
+            "active",
+            "historical",
+            "all"
+          ],
+          "description": "Which strategies to return. Default: 'active'."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "manage_recovery_strategy",
+    "description": "Add, update, end, or delete a recovery/mindfulness strategy. Use when the user describes a new practice, changes a schedule, stops a practice, or removes one. Infer category from name, start_date defaults to today, infer schedule from context. ASK only if name is missing. For update/end/delete call list_recovery_strategies first.\n\nAFTER a successful 'add': do NOT just confirm and stop. Reply by (1) restating the assumed schedule (sessions per period, duration, time of day, start date) in plain language, and (2) asking the user to confirm or correct it — especially any optional fields you did NOT set (duration_minutes, time_of_day). Example: \"Logged sauna starting today, assuming once per week. Sound right? About how long do you usually go for, and what time of day — morning, evening?\" If the user corrects anything, call this tool again with action='update'. The goal is accurate adherence data, not a silent confirmation.",
+    "annotations": {
+      "title": "Manage recovery strategies",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "add",
+            "update",
+            "end",
+            "delete"
+          ],
+          "description": "What to do. Required."
+        },
+        "id": {
+          "type": "integer",
+          "description": "Strategy ID. Required for update, end, delete."
+        },
+        "name": {
+          "type": "string",
+          "description": "Strategy name (e.g. 'Box Breathing'). Required for add."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "breathwork",
+            "progressive_muscle_relaxation",
+            "meditation",
+            "cold_exposure",
+            "heat_sauna",
+            "contrast_therapy",
+            "lymphatic_drainage",
+            "stretching_mobility",
+            "yoga",
+            "journaling",
+            "other"
+          ],
+          "description": "Category. Infer from name."
+        },
+        "sessions_per_period": {
+          "type": "integer",
+          "description": "Target sessions per period. Default: 1."
+        },
+        "period_unit": {
+          "type": "string",
+          "enum": [
+            "day",
+            "week"
+          ],
+          "description": "Period unit. Default: 'week'."
+        },
+        "duration_minutes": {
+          "type": "integer",
+          "description": "Target minutes per session. Optional."
+        },
+        "time_of_day": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "When during the day: ['morning'], ['evening'], etc. Optional."
+        },
+        "start_date": {
+          "type": "string",
+          "description": "Start date (YYYY-MM-DD). Default to today for add."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End date (YYYY-MM-DD). Default to today for end action."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-text notes. Optional."
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_recovery_session",
+    "description": "Log a completed or skipped recovery/mindfulness session. Use when the user says they did (or skipped) a breathing exercise, meditation, cold plunge, sauna, stretching, or any recovery practice. Also use for one-off standalone sessions not linked to a recurring strategy.\n\nINFER — do not ask:\n- date: default to today\n- category: infer from the practice name\n- strategy_name: use the strategy name if linked, or the user's description\n- duration_minutes: infer if mentioned (omit for skipped sessions)\n- quality: only include if the user rates it (1-5 scale)\n- skipped: true when the user says they skipped, missed, or didn't do a session; false (default) for completed sessions\n\nPREFERRED WORKFLOW: call list_recovery_strategies first to link the session to an active strategy for adherence tracking. If no matching strategy exists, log as standalone.",
+    "annotations": {
+      "title": "Log a recovery session",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "strategy_id": {
+          "type": "integer",
+          "description": "Strategy ID from list_recovery_strategies. Optional — omit for standalone sessions."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date (YYYY-MM-DD). Default to today."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "breathwork",
+            "progressive_muscle_relaxation",
+            "meditation",
+            "cold_exposure",
+            "heat_sauna",
+            "contrast_therapy",
+            "lymphatic_drainage",
+            "stretching_mobility",
+            "yoga",
+            "journaling",
+            "other"
+          ],
+          "description": "Category. Required."
+        },
+        "strategy_name": {
+          "type": "string",
+          "description": "Name of the practice. Required."
+        },
+        "duration_minutes": {
+          "type": "integer",
+          "description": "Duration in minutes. Optional — omit for skipped."
+        },
+        "quality": {
+          "type": "integer",
+          "description": "Subjective quality 1-5. Optional."
+        },
+        "skipped": {
+          "type": "boolean",
+          "description": "true if the session was skipped/missed. Default: false."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Session notes or reason for skipping. Optional."
+        }
+      },
+      "required": [
+        "category",
+        "strategy_name"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "update_recovery_session",
+    "description": "Update one or more fields on an existing recovery session log entry. Use when the user wants to correct or change something already logged (e.g. wrong duration, quality rating, or notes).\n\nREQUIRED WORKFLOW: call list_recovery_strategies or review recent recovery logs first to find the correct session ID. Only send the fields that need to change; omit all others.",
+    "annotations": {
+      "title": "Update a recovery session",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Recovery session ID. Required — do not proceed without it."
+        },
+        "date": {
+          "type": "string",
+          "description": "Updated date (YYYY-MM-DD). Optional."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "breathwork",
+            "progressive_muscle_relaxation",
+            "meditation",
+            "cold_exposure",
+            "heat_sauna",
+            "contrast_therapy",
+            "lymphatic_drainage",
+            "stretching_mobility",
+            "yoga",
+            "journaling",
+            "other"
+          ],
+          "description": "Updated category. Optional."
+        },
+        "strategy_name": {
+          "type": "string",
+          "description": "Updated practice name. Optional."
+        },
+        "duration_minutes": {
+          "type": "integer",
+          "description": "Updated duration in minutes. Optional."
+        },
+        "quality": {
+          "type": "integer",
+          "description": "Updated quality 1-5. Optional."
+        },
+        "skipped": {
+          "type": "boolean",
+          "description": "Updated skipped status. Optional."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Updated notes. Optional."
+        },
+        "strategy_id": {
+          "type": "integer",
+          "description": "Updated strategy ID. Optional — set null to unlink."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "delete_recovery_session",
+    "description": "Permanently delete a recovery session log entry. This action is irreversible.\n\nREQUIRED WORKFLOW: confirm the session ID before deleting. If the user's intent is ambiguous, ask which session to remove.",
+    "annotations": {
+      "title": "Delete a recovery session",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Recovery session ID. Required — do not proceed without it."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_run",
+    "description": "Log a run to the user's running tracker. Use when the user mentions going for a run, jogging, or any running activity.\n\nREQUIRED: date, distance, and duration. Everything else is optional.\n\nINFER — do not ask:\n- date: default to today; infer from context (\"yesterday\", \"this morning\")\n- run_type: infer from context if obvious (\"easy run\"=easy, \"long run\"=long, \"tempo\"=tempo, \"intervals\"=interval, \"recovery jog\"=recovery, \"race\"=race). Omit if not clear.\n- surface: infer only if stated (\"treadmill run\"=treadmill, \"trail run\"=trail). Omit if not clear.\n\nDURATION — accept flexible input and convert to seconds:\n- \"28 minutes\" → 1680\n- \"1:15:30\" or \"1h 15m 30s\" → 4530\n- \"45 min\" → 2700\n- \"1 hour\" → 3600\n\nASK only if distance or duration are completely missing and cannot be inferred.",
+    "annotations": {
+      "title": "Log a run",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date of the run. Format: YYYY-MM-DD. Required — default to today."
+        },
+        "distance_mi": {
+          "type": "number",
+          "description": "Distance in miles. Required."
+        },
+        "duration_sec": {
+          "type": "integer",
+          "description": "Duration in seconds. Required — convert from whatever format the user provides (minutes, h:mm:ss, etc)."
+        },
+        "run_type": {
+          "type": "string",
+          "enum": [
+            "easy",
+            "long",
+            "tempo",
+            "interval",
+            "recovery",
+            "race"
+          ],
+          "description": "Type of run. Optional — infer from context if obvious."
+        },
+        "surface": {
+          "type": "string",
+          "enum": [
+            "road",
+            "trail",
+            "track",
+            "treadmill",
+            "other"
+          ],
+          "description": "Running surface. Optional — infer only if stated. Use \"other\" for indoor, airport, mall, etc."
+        },
+        "avg_hr": {
+          "type": "integer",
+          "description": "Average heart rate. Optional — include if the user mentions it."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-text notes. Optional."
+        }
+      },
+      "required": [
+        "date",
+        "distance_mi",
+        "duration_sec"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_runs",
+    "description": "List runs logged within a date range, returning each run's ID, date, distance, duration, pace, and type. Use to answer questions like \"how far did I run this week?\", \"what was my last run?\", or before delete_run to find a run ID.\n\nMaximum range: 31 days per call. For longer periods, make multiple calls with sequential date ranges.\n\nINFER — default start_date to 7 days ago and end_date to today.",
+    "annotations": {
+      "title": "List runs",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Start of date range. Format: YYYY-MM-DD. Optional — defaults to 7 days ago."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End of date range. Format: YYYY-MM-DD. Optional — defaults to today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "delete_run",
+    "description": "Delete a run by ID. Use when the user wants to remove a run entry. Call list_runs first to find the correct ID.\n\nASK for confirmation if the user's intent is ambiguous.",
+    "annotations": {
+      "title": "Delete a run",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Run UUID from list_runs. Required."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_rest_day",
+    "description": "Mark a date as an intentional rest day. Use when the user says they took a rest day, are taking one today, or wants to mark a past day as rest after the fact (e.g. \"this past Monday was a rest day\", \"today is a rest day\", \"I rested yesterday\"). Suppresses the workout-prompt nudges for that date and lets the engine treat the day as planned, not skipped.\n\nINFER — do not ask:\n- date: parse the user's reference. \"today\" = today, \"yesterday\" = today minus 1, \"last Monday\" = the most recent Monday before today, etc. Default to today when nothing is specified.\n\nIdempotent — calling twice on the same date is a no-op (the second call returns the same confirmation). To remove a rest day, use cancel_rest_day.",
+    "annotations": {
+      "title": "Log a rest day",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "The date to mark as a rest day. Format: YYYY-MM-DD. Default: today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "cancel_rest_day",
+    "description": "Remove a previously declared rest day. Use when the user changes their mind (\"scratch that, I'm going to lift today after all\") or wants to undo a mistaken declaration.\n\nINFER — do not ask:\n- date: parse the user's reference; default to today.",
+    "annotations": {
+      "title": "Cancel a rest day",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "The date to un-mark. Format: YYYY-MM-DD. Default: today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_rest_days",
+    "description": "List the dates a user has marked as rest days within a range. Use when the user asks about their rest pattern (\"how many rest days have I taken this month?\", \"did I rest last week?\").\n\nINFER — do not ask:\n- start_date: default to 30 days ago\n- end_date: default to today",
+    "annotations": {
+      "title": "List rest days",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Start of date range. Format: YYYY-MM-DD. Default: 30 days ago."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End of date range. Format: YYYY-MM-DD. Default: today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "create_notification",
+    "description": "Send a push notification to the user (the API-key holder), and drop the same row into their in-app alerts center. Use when a long-running background task you're driving needs to ping the user when it finishes — e.g. a scheduled audit completed and there's a result to review.\n\nThe notification is addressed to the calling user only — there is no way to send to another account. Defaults to the 'system' category so it bypasses quiet hours and the daily budget cap; pass a different category for non-operational pings (e.g. 'advisor_chat' for AI replies).\n\nProvide a deep_link when you want tapping the notification to open a specific screen (e.g. a PR URL, a /me screen, an /admin route). Keep title under 60 characters and body under 200.",
+    "annotations": {
+      "title": "Create a notification",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Notification title. Required. Keep under 60 characters."
+        },
+        "body": {
+          "type": "string",
+          "description": "Notification body text. Required. Keep under 200 characters."
+        },
+        "deep_link": {
+          "type": "string",
+          "description": "Absolute URL or in-app path opened when the notification is tapped. Optional."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "system",
+            "advisor_chat",
+            "celebrations",
+            "sync_warnings"
+          ],
+          "description": "Category. Default: 'system' (always-deliver, ignores quiet hours and daily cap). Use 'advisor_chat' for AI persona replies, 'celebrations' for PR-style wins, 'sync_warnings' for integration issues."
+        },
+        "subtype": {
+          "type": "string",
+          "description": "Free-form sub-classifier shown in admin tooling. Default: 'background_task'."
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "urgent"
+          ],
+          "description": "Delivery priority. Default: 'normal'."
+        }
+      },
+      "required": [
+        "title",
+        "body"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_blog_posts",
+    "description": "Search the public Crew Blog at /blog for advisor-authored daily posts. Only call when the user explicitly asks about the blog or what an advisor has written; don't volunteer posts in normal conversation.\n\nReturns each matching post's slug, title, summary, advisor name, and date. Link a post inline as /blog/<slug>.",
+    "annotations": {
+      "title": "List blog posts",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "advisor_slug": {
+          "type": "string",
+          "enum": [
+            "fitness-helper",
+            "coach",
+            "physio",
+            "nutritionist",
+            "longevity",
+            "biohacker",
+            "bodybuilder",
+            "runner",
+            "protocol"
+          ],
+          "description": "Optional — filter to one advisor (e.g. \"nutritionist\" for Casey Mills)."
+        },
+        "query": {
+          "type": "string",
+          "description": "Optional — substring filter applied to title and summary (case-insensitive)."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Optional — number of posts to return. Default 10, max 30."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "get_app_guide_section",
+    "description": "Look up how this app works (features, settings, navigation, troubleshooting). Call when the user asks where something lives, how a feature works, what a metric is computed from, or how to do something inside the product. Do NOT call for advice about the user's body or data — those route to specialists.\n\nExamples:\n- \"where do I see my PRs?\" → topic: troubleshooting (or pages)\n- \"what does Fit Score include?\" → topic: pages\n- \"how do I connect Oura?\" → topic: wearables\n- \"how do I set a calorie goal?\" → topic: goals\n- \"can I export my data?\" → topic: privacy\n- \"what does Lauryn handle?\" → topic: personas\n- \"how does the photo meal scan work?\" → topic: photos\n- \"how do I log a meal in chat?\" → topic: logging\n- \"how do friend challenges work?\" → topic: challenges\n\nReturns a Markdown section plus a short guardrail preamble that constrains how to answer. Pick exactly one topic per call; if the user's question spans two, call twice.",
+    "annotations": {
+      "title": "App guide lookup",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "topic": {
+          "type": "string",
+          "enum": [
+            "pages",
+            "personas",
+            "logging",
+            "photos",
+            "wearables",
+            "goals",
+            "challenges",
+            "privacy",
+            "troubleshooting"
+          ],
+          "description": "Which section of the app guide to load. Pages = where features live + dashboard / Fit Score / each subpage. Personas = the AI specialist roster. Logging = how each data type is logged. Photos = photo meal scanning. Wearables = Fitbit/Oura/Apple Health/Health Connect/ChatGPT/MCP integrations. Goals = formal goals + standard targets + lifecycle. Challenges = friend challenges (steps/PR/rep). Privacy = data export, deletion, privacy policy. Troubleshooting = common how-do-I and why-isnt-X questions."
+        }
+      },
+      "required": [
+        "topic"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "log_cycle",
+    "description": "Log a period to the user's cycle log. Handles all cases:\n\n- Starting a period today: \"my period started today\"\n- Backfilling a past period: \"my period started May 3rd and ended May 8th\"\n- Resuming a period ended today: \"actually I'm still on my period\" — detects that today's period was marked ended and reopens it\n- Logging just a start with no end yet: \"I just got my period\"\n\nBefore logging, check that cycle tracking is enabled (consented_at in cycle_prefs). If not, tell the user to turn it on from the dashboard first.\n\nINFER — do not ask:\n- started_on: default to today for current-period statements\n- ended_on: omit unless the user says it ended; infer from context (\"5-day period starting May 3\" → ended_on May 7)\n\nDo NOT use this tool to log future dates.",
+    "annotations": {
+      "title": "Log a period",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "started_on": {
+          "type": "string",
+          "description": "Period start date. Format: YYYY-MM-DD. Required."
+        },
+        "ended_on": {
+          "type": "string",
+          "description": "Period end date. Format: YYYY-MM-DD. Omit if period is still active."
+        }
+      },
+      "required": [
+        "started_on"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "list_cycle",
+    "description": "List the user's logged period records within a date range. Use to look up period history before updating or deleting a record, or when the user asks about their cycle history.\n\nINFER — do not ask:\n- start_date: default to 6 months ago\n- end_date: default to today",
+    "annotations": {
+      "title": "List cycle records",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "start_date": {
+          "type": "string",
+          "description": "Start of date range. Format: YYYY-MM-DD. Default: 6 months ago."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End of date range. Format: YYYY-MM-DD. Default: today."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "update_cycle",
+    "description": "Update an existing period record by ID. Use to correct dates, add a missing end date, or clear an end date (resume). Use list_cycle first to find the record ID.\n\nCommon uses:\n- \"my period ended on the 9th not the 8th\" → update ended_on\n- \"actually my period started the 2nd not the 3rd\" → update started_on\n- \"I'm still on my period\" → clear ended_on (pass null) to reopen it\n\nINFER — do not ask:\n- id: look up via list_cycle first if not provided",
+    "annotations": {
+      "title": "Update a period record",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Record ID from list_cycle. Required."
+        },
+        "started_on": {
+          "type": "string",
+          "description": "Updated start date. Format: YYYY-MM-DD. Optional."
+        },
+        "ended_on": {
+          "type": "string",
+          "description": "Updated end date. Format: YYYY-MM-DD. Pass null to clear (mark active). Optional."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "delete_cycle",
+    "description": "Delete a period record by ID. Use list_cycle first to confirm the record before deleting.\n\nOnly delete if the user explicitly asks to remove a specific record. Do not delete to \"fix\" a record — use update_cycle instead.",
+    "annotations": {
+      "title": "Delete a period record",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Record ID from list_cycle. Required."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "Human-readable result text returned by the tool."
+        }
+      },
+      "required": [
+        "result"
+      ]
+    }
+  },
+  {
+    "name": "show_week_workouts",
+    "description": "Show the user their past 7 days of workouts (heart points per day, days trained) as an inline chart. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "This week in training",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "30d",
+            "90d",
+            "1y"
+          ],
+          "description": "Time window. One of 7d, 30d, 90d, 1y. Default 7d."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_week_fit_score",
+    "description": "Show the user their past 7 days of daily Fit Score (the app's 0-100 composite) as an inline chart. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "This week in Fit Score",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "30d",
+            "90d",
+            "1y"
+          ],
+          "description": "Time window. One of 7d, 30d, 90d, 1y. Default 7d."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_week_macros",
+    "description": "Show the user their past 7 days of calories and macros (protein, carbs, fat) vs targets as an inline chart. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "This week in nutrition",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "30d",
+            "90d",
+            "1y"
+          ],
+          "description": "Time window. One of 7d, 30d, 90d, 1y. Default 7d."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_week_sleep",
+    "description": "Show the user their past 7 days of sleep (hours per night and sleep score) as an inline chart. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "This week in sleep",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "30d",
+            "90d",
+            "1y"
+          ],
+          "description": "Time window. One of 7d, 30d, 90d, 1y. Default 7d."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_week_steps",
+    "description": "Show the user their past 7 days of step counts vs their daily goal as an inline chart. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "This week in steps",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "30d",
+            "90d",
+            "1y"
+          ],
+          "description": "Time window. One of 7d, 30d, 90d, 1y. Default 7d."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_body_weight",
+    "description": "Show the user their body weight (and body-fat %) trend over time as an interactive line chart with a 30/90-day/1-year range toggle. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "Body weight trend",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "30d",
+            "90d",
+            "1y"
+          ],
+          "description": "Time window. One of 7d, 30d, 90d, 1y."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_recovery",
+    "description": "Show the user their resting heart rate and HRV recovery trend over time as an interactive dual-line chart with a 30/90-day/1-year range toggle. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "Recovery — RHR & HRV",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "30d",
+            "90d",
+            "1y"
+          ],
+          "description": "Time window. One of 7d, 30d, 90d, 1y."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_runs",
+    "description": "Show the user their running mileage over the last 14 days as an inline bar chart. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "Runs — last 2 weeks",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "30d",
+            "90d",
+            "1y"
+          ],
+          "description": "Time window. One of 7d, 30d, 90d, 1y. Default 30d."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_fit_score_breakdown",
+    "description": "Show how today's Fit Score breaks down across its six components (Train, Sleep, Fuel, Recovery, Steps, Wellbeing) as an inline donut/radial chart. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "Today's Fit Score breakdown",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_exercise_progression",
+    "description": "Show the user's estimated 1-rep-max progression for a lift over time as an interactive line chart, with filters for date range (30/90-day/1-year) and muscle group, and an exercise picker. Use when the user asks about progress on a specific lift (e.g. \"how's my bench progressing\"). When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "Exercise progression",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "exercise": {
+          "type": "string",
+          "description": "Exercise name to chart (e.g. \"Bench Press\"). Optional — defaults to the most-logged lift in the window."
+        },
+        "muscle_group": {
+          "type": "string",
+          "description": "Optional muscle-group filter for the exercise picker (e.g. \"Chest\", \"Legs\")."
+        },
+        "range": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "30d",
+            "90d",
+            "1y"
+          ],
+          "description": "Time window. One of 7d, 30d, 90d, 1y."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  {
+    "name": "show_workout",
+    "description": "Show a single logged workout session's exercises and sets as an inline card. Defaults to the most recent workout; can target a specific date. When the user asks about this, prefer calling this tool and rendering the chart over describing the numbers in text. Interactive: 7d/30d/90d/1y range toggle and hover tooltips; returns a short text summary alongside the chart.",
+    "annotations": {
+      "title": "Workout detail",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Workout date (YYYY-MM-DD). Optional — defaults to the most recent workout."
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Widget discriminant identifying the payload shape."
+        },
+        "generatedAt": {
+          "type": "string",
+          "description": "ISO timestamp the snapshot was built."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    }
+  }
+]

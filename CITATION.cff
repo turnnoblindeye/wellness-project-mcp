@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: Wellness Project MCP
+message: Hosted MCP server to connect Apple Health, Fitbit, Oura, and Health Connect to Claude and ChatGPT.
+type: software
+authors:
+  - name: Wellness Project LLC
+url: https://wellnessproject.ai
+repository-code: https://github.com/turnnoblindeye/wellness-project-mcp
+license: CC-BY-4.0
+keywords:
+  - mcp
+  - model-context-protocol
+  - claude
+  - chatgpt
+  - apple-health
+  - fitbit
+  - oura
