@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.wellnessproject/wellness-project",
+  "title": "Wellness Project",
+  "description": "Hosted MCP server that connects Apple Health, Fitbit, Oura, and Google Health Connect to Claude and ChatGPT. Read and log workouts, sleep, nutrition, body metrics, labs, and recovery in plain English, with interactive inline charts.",
+  "version": "1.0.0",
+  "websiteUrl": "https://wellnessproject.ai",
+  "repository": {
+    "url": "https://github.com/turnnoblindeye/wellness-project-mcp",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://wellnessproject.ai/api/mcp"
+    }
+  ]
+}
