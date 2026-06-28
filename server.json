@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "com.wellnessproject/wellness-project",
+  "name": "ai.wellnessproject/wellness-project",
   "title": "Wellness Project",
   "description": "Hosted MCP server connecting Apple Health, Fitbit, Oura & Health Connect to Claude and ChatGPT.",
   "version": "1.0.0",
