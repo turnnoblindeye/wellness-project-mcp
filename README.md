@@ -76,6 +76,12 @@ Rotate or revoke the key from the same settings screen at any time.
 
 The same server backs ChatGPT. Connect Wellness Project as a custom connector / plugin pointed at `https://wellnessproject.ai/api/mcp` and authorize. The identical tools and widgets are available there.
 
+## Demo
+
+A short screen recording of the Wellness Project connector running inside ChatGPT: connecting, asking questions in plain English, and the tools returning live data.
+
+**[Watch the demo (media/chatgpt-connector-demo.mp4)](./media/chatgpt-connector-demo.mp4)**
+
 ## Inline chart widgets
 
 Eleven tools render interactive charts inline through the [MCP Apps UI](https://modelcontextprotocol.io) extension, not plain text:
