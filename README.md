@@ -80,7 +80,9 @@ The same server backs ChatGPT. Connect Wellness Project as a custom connector / 
 
 A short screen recording of the Wellness Project connector running inside ChatGPT: connecting, asking questions in plain English, and the tools returning live data.
 
-**[Watch the demo (media/chatgpt-connector-demo.mp4)](./media/chatgpt-connector-demo.mp4)**
+<video src="https://github.com/turnnoblindeye/wellness-project-mcp/raw/main/media/chatgpt-connector-demo.mp4" controls muted></video>
+
+**[Download / watch the demo](./media/chatgpt-connector-demo.mp4)**
 
 ## Inline chart widgets
 
