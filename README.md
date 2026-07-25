@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/lockup-dark.png">
+    <img src="assets/lockup-light.png" alt="Wellness Project" width="440">
+  </picture>
+</p>
+
 # Wellness Project MCP
 
 **Connect Apple Health, Fitbit, Oura, and Google Health Connect to Claude and ChatGPT.** Wellness Project is a hosted Model Context Protocol (MCP) server: your devices sync into one account, and Claude or ChatGPT read your workouts, sleep, nutrition, and recovery in plain English. No exports, no copy-paste, no community server to self-host.
