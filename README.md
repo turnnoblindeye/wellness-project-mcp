@@ -171,4 +171,4 @@ Access is authenticated per user by OAuth or a personal API key. Every tool is s
 
 ## License
 
-The tool catalog and schemas in this repository are published under [CC BY 4.0](./LICENSE) so MCP clients and directories can reference them freely. "Wellness Project" and the app itself remain the property of Wellness Project LLC. See [NOTICE](./NOTICE) for exactly what the grant covers.
+The tool catalog and schemas in this repository are published under the [MIT License](./LICENSE) so MCP clients and directories can reference them freely. "Wellness Project" and the app itself remain the property of Wellness Project LLC. See [NOTICE](./NOTICE) for exactly what the grant covers.

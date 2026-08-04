@@ -6,7 +6,7 @@ authors:
   - name: Wellness Project LLC
 url: https://wellnessproject.ai
 repository-code: https://github.com/turnnoblindeye/wellness-project-mcp
-license: CC-BY-4.0
+license: MIT
 keywords:
   - mcp
   - model-context-protocol
