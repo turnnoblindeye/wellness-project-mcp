@@ -1,11 +1,11 @@
 Copyright (c) 2026 Wellness Project LLC
 
-WHAT THE CC BY 4.0 GRANT IN ./LICENSE COVERS
+WHAT THE MIT GRANT IN ./LICENSE COVERS
 
 The documentation and tool schemas in this repository: README.md, TOOLS.md, and
-catalog/tools.json. You are free to share and adapt this material for any
-purpose, including commercially, provided you give appropriate credit to
-Wellness Project (https://wellnessproject.ai) and indicate if changes were made.
+catalog/tools.json. You are free to use, share and adapt this material for any
+purpose, including commercially, provided the copyright notice and permission
+notice in LICENSE travel with it.
 
 WHAT IT DOES NOT COVER
 
@@ -14,7 +14,11 @@ MCP server, source code, and trademarks, remain the property of Wellness
 Project LLC and are not licensed under this grant.
 
 This file carries the scope note that previously sat at the top of LICENSE.
-LICENSE now holds the canonical CC BY 4.0 legal text verbatim, because license
+LICENSE holds canonical license text verbatim and nothing else, because license
 detectors (GitHub's licensee, and the directories that read it) match on that
 exact text and report NOASSERTION when a summary or preamble is in its place.
-The grant is unchanged.
+
+The grant was CC BY 4.0 until August 2026. It moved to MIT because the MCP
+directories that list this server (Glama, the Docker MCP Catalog) grade on a
+recognised permissive software license and score CC BY as no license at all.
+MIT is more permissive, so nothing granted before was withdrawn.
