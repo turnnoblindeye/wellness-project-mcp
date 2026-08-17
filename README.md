@@ -7,7 +7,7 @@
 
 # Wellness Project MCP
 
-**Connect Apple Health, Fitbit, Oura, and Google Health Connect to Claude and ChatGPT.** Wellness Project is a hosted Model Context Protocol (MCP) server: your devices sync into one account, and Claude or ChatGPT read your workouts, sleep, nutrition, and recovery in plain English. No exports, no copy-paste, no community server to self-host.
+**Connect Apple Health, Fitbit, Oura, and Google Health Connect to Claude, ChatGPT, Gemini Spark, and other MCP clients.** Wellness Project is a hosted Model Context Protocol (MCP) server: your devices sync into one account, and your assistant reads your workouts, sleep, nutrition, and recovery in plain English. No exports, no copy-paste, no community server to self-host.
 
 Wellness Project is a free AI health app. This repository documents its public MCP server: the tool catalog, the schemas, the inline-chart widgets, and how to connect any MCP client to it.
 
@@ -82,6 +82,19 @@ Rotate or revoke the key from the same settings screen at any time.
 ## Connect to ChatGPT
 
 The same server backs ChatGPT. Connect Wellness Project as a custom connector / plugin pointed at `https://wellnessproject.ai/api/mcp` and authorize. The identical tools and widgets are available there.
+
+## Connect to Gemini Spark
+
+1. Go to https://gemini.google.com/spark.
+2. Open **Settings** in the bottom-left.
+3. Select **Personal intelligence**.
+4. Select **Connected apps**.
+5. Scroll to the bottom and choose **Add a custom app**.
+6. Enter `https://wellnessproject.ai/api/mcp`.
+7. Follow Google's prompts to connect and authorize Wellness Project.
+
+Gemini custom MCP apps are configured from Gemini Spark, so start at
+`gemini.google.com/spark` rather than a standard Gemini chat.
 
 ## Demo
 
