@@ -5,6 +5,7 @@
 # Wellness Project MCP
 
 [![MCP Marketplace](https://img.shields.io/badge/MCP%20Marketplace-Indexed-blueviolet)](https://getlulu.dev/mcps)
+[![MCPVault: claimed](https://mcpvault.io/badge/wellness-project-mcp.svg)](https://mcpvault.io/servers/wellness-project-mcp/health?utm_source=external_badge&utm_medium=referral&utm_campaign=mcp_health_report)
 [![Wellness Project MCP server — quality and maintenance score on Glama](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp/badges/card.svg)](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp)
 [![Wellness Project MCP server — quality and maintenance score on Glama](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp/badges/score.svg)](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp)
 [![Wellness Project MCP server — quality and maintenance score on Glama](https://img.shields.io/endpoint?url=https%3A%2F%2Fglama.ai%2Fmcp%2Fservers%2Fturnnoblindeye%2Fwellness-project-mcp%2Fbadges%2Fshields.json)](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp)
