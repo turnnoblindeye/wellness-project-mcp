@@ -74,7 +74,7 @@ async function callUpstream(method, params = {}) {
 const server = new Server(
   {
     name: 'wellness-project-mcp',
-    version: '1.0.0',
+    version: '1.2.1',
   },
   {
     capabilities: {
