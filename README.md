@@ -7,6 +7,7 @@
 [![MCP Marketplace](https://img.shields.io/badge/MCP%20Marketplace-Indexed-blueviolet)](https://getlulu.dev/mcps)
 [![MCPVault: claimed](https://mcpvault.io/badge/wellness-project-mcp.svg)](https://mcpvault.io/servers/wellness-project-mcp/health?utm_source=external_badge&utm_medium=referral&utm_campaign=mcp_health_report)
 [![MCP status](https://mcpi.app/servers/wellness-project/badge.svg)](https://mcpi.app/servers/wellness-project)
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/wellnessproject-ai)
 [![Wellness Project MCP server — quality and maintenance score on Glama](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp/badges/score.svg)](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp)
 
 **Bring connected health and fitness data into Claude, ChatGPT, Gemini Spark, Grok, Mistral, and other MCP clients.** Wellness Project is a hosted Model Context Protocol server. Your devices and logs sync into one account, and supported assistants can read or update workouts, nutrition, sleep, recovery, body metrics, goals, labs, wellbeing, and more in plain English.
