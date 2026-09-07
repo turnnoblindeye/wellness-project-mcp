@@ -1,0 +1,35 @@
+name: Temporary stage generated MCP catalog
+on:
+  push:
+    branches: [tmp/mcp-public-catalog-stage-20260907]
+permissions:
+  contents: write
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download exact generated catalog
+        run: |
+          curl --fail --location --output /tmp/catalog.zip 'https://sdmntprcentralus.oaiusercontent.com/files/00000000-8578-81f5-8972-2ee85c6d2d3d/raw?se=2026-09-07T14%3A02%3A52Z&sp=r&sv=2026-02-06&sr=b&scid=e24b0ad4-41fd-576e-a7b3-bb9e41a62895&skoid=77636ecc-ad8d-44df-baa7-163b524a0261&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-06T21%3A24%3A56Z&ske=2026-09-07T21%3A24%3A56Z&sks=b&skv=2026-02-06&sig=ar7P4s7f3mFUBVDfX57tDC5YmGrIkVsBt9NJj7srwP8%3D'
+          rm -rf /tmp/catalog
+          mkdir -p /tmp/catalog
+          unzip -q /tmp/catalog.zip -d /tmp/catalog
+          test -f /tmp/catalog/TOOLS.md
+          test -f /tmp/catalog/tools.json
+          grep -q '\*\*73 tools\*\*' /tmp/catalog/TOOLS.md
+          ! grep -q 'show_fit_score_breakdown' /tmp/catalog/tools.json
+      - name: Stage catalog on throwaway branch
+        run: |
+          git config user.name 'Bryan Barash'
+          git config user.email 'bryanbarash@gmail.com'
+          git fetch origin main
+          git checkout -B tmp/mcp-generated-catalog-73 origin/main
+          cp /tmp/catalog/TOOLS.md ./TOOLS.md
+          mkdir -p catalog
+          cp /tmp/catalog/tools.json ./catalog/tools.json
+          git add TOOLS.md catalog/tools.json
+          git commit -m 'chore: stage generated MCP catalog'
+          git push --force origin tmp/mcp-generated-catalog-73
