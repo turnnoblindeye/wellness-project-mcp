@@ -65,6 +65,36 @@ Restart Claude Code, then run `/mcp`, select **wellness-project**, and authorize
 There is no client ID, client secret, or API key to enter. Run
 `/wellness-project:setup` if you would rather be walked through it.
 
+### Cline
+
+Cline connects to Wellness Project as a remote MCP server. Nothing is cloned,
+installed, or run locally.
+
+1. Open the **MCP Servers** icon in the Cline sidebar and choose **Remote Servers**.
+2. Enter a server name, for example `wellness-project`.
+3. Paste `https://wellnessproject.ai/api/mcp` as the server URL and add it.
+4. Complete the Wellness Project OAuth flow when Cline opens it in your browser.
+
+To edit `cline_mcp_settings.json` directly instead:
+
+```json
+{
+  "mcpServers": {
+    "wellness-project": {
+      "type": "streamableHttp",
+      "url": "https://wellnessproject.ai/api/mcp",
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+Set `"type": "streamableHttp"` explicitly. Cline falls back to the legacy SSE
+transport when the type is omitted. There is no client ID, client secret, or API
+key to enter. [llms-install.md](./llms-install.md) has the same steps written for
+an agent doing the setup.
+
 ### ChatGPT
 
 ChatGPT custom MCP apps use developer mode. Current OpenAI availability is plan-dependent: full MCP support including write/modify actions is available in beta for Business, Enterprise, and Edu, while Pro can connect MCPs with read/fetch permissions in developer mode.
