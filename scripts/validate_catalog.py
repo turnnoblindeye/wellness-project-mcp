@@ -21,7 +21,14 @@ def load_json(path: Path):
 
 
 def stated_tool_counts(text: str) -> list[int]:
-    return [int(value) for value in re.findall(r"(?<!\d)(\d+)\s+tools\b", text, flags=re.IGNORECASE)]
+    return [
+        int(value)
+        for value in re.findall(
+            r"(?<!\d)(\d+)\s+(?:[A-Za-z][A-Za-z-]*\s+){0,4}tools\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+    ]
 
 
 def main() -> int:
