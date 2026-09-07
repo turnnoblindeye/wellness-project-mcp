@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "wellness-project",
+  "description": "Wellness Project: connected health and fitness data in Claude.",
+  "owner": {
+    "name": "Wellness Project LLC",
+    "url": "https://wellnessproject.ai"
+  },
+  "plugins": [
+    {
+      "name": "wellness-project",
+      "description": "Read and log workouts, nutrition, sleep, recovery, body metrics, labs, and goals from Apple Health, Fitbit, Oura, and Health Connect through the hosted Wellness Project MCP server.",
+      "author": {
+        "name": "Wellness Project LLC"
+      },
+      "category": "productivity",
+      "homepage": "https://wellnessproject.ai",
+      "source": "./"
+    }
+  ]
+}
