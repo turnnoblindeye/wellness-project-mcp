@@ -1,0 +1,11 @@
+{
+  "name": "wellness-project",
+  "version": "1.2.1",
+  "description": "Connect your health, fitness, nutrition, sleep, recovery, and wearable data to Gemini CLI through Wellness Project.",
+  "mcpServers": {
+    "wellness-project": {
+      "httpUrl": "https://wellnessproject.ai/api/mcp",
+      "description": "Hosted Wellness Project MCP server with OAuth 2.1 authentication."
+    }
+  }
+}
