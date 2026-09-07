@@ -1,0 +1,21 @@
+{
+  "name": "wellness-project",
+  "version": "1.0.0",
+  "description": "Connect your health, fitness, nutrition, sleep, and wearable data to Cursor through the hosted Wellness Project MCP server.",
+  "author": {
+    "name": "Wellness Project LLC"
+  },
+  "homepage": "https://wellnessproject.ai",
+  "repository": "https://github.com/turnnoblindeye/wellness-project-mcp",
+  "license": "MIT",
+  "keywords": [
+    "health",
+    "fitness",
+    "nutrition",
+    "sleep",
+    "wearables",
+    "mcp"
+  ],
+  "logo": "https://wellnessproject.ai/images/brand/mcp-icon-512.png",
+  "mcpServers": "mcp.json"
+}
