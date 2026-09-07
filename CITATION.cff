@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 title: Wellness Project MCP
-message: Hosted MCP server to connect Apple Health, Fitbit, Oura, and Health Connect to Claude and ChatGPT.
+message: Hosted MCP server for connected health and fitness data in Claude, ChatGPT, Gemini Spark, Grok, and Mistral.
 type: software
 authors:
   - name: Wellness Project LLC
@@ -12,6 +12,11 @@ keywords:
   - model-context-protocol
   - claude
   - chatgpt
+  - gemini
+  - grok
+  - mistral
   - apple-health
+  - health-connect
   - fitbit
   - oura
+  - withings
