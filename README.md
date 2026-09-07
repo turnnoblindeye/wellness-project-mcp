@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/lockup-dark.png">
-    <img src="assets/lockup-light.png" alt="Wellness Project" width="440">
-  </picture>
+  <img src="https://wellnessproject.ai/images/brand/mcp-icon-512.png" alt="Wellness Project" width="220">
 </p>
 
 # Wellness Project MCP
