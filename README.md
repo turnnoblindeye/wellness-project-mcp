@@ -7,6 +7,8 @@
 
 # Wellness Project MCP
 
+[![MCP Marketplace](https://img.shields.io/badge/MCP%20Marketplace-Indexed-blueviolet)](https://getlulu.dev/mcps)
+
 **Connect Apple Health, Fitbit, Oura, and Google Health Connect to Claude, ChatGPT, Gemini Spark, and other MCP clients.** Wellness Project is a hosted Model Context Protocol (MCP) server: your devices sync into one account, and your assistant reads your workouts, sleep, nutrition, and recovery in plain English. No exports, no copy-paste, no community server to self-host.
 
 Wellness Project is a free AI health app. This repository documents its public MCP server: the tool catalog, the schemas, the inline-chart widgets, and how to connect any MCP client to it.
