@@ -51,6 +51,20 @@ Authentication is handled by OAuth. Personal API keys are not part of the curren
 4. Leave Client ID and Client Secret blank if Claude shows those fields. Claude can register itself dynamically.
 5. Sign in to Wellness Project and authorize the connection.
 
+### Claude Code
+
+Claude Code installs Wellness Project as a plugin. The plugin carries nothing but
+this server's configuration and a setup skill.
+
+```
+/plugin marketplace add turnnoblindeye/wellness-project-mcp
+/plugin install wellness-project
+```
+
+Restart Claude Code, then run `/mcp`, select **wellness-project**, and authorize.
+There is no client ID, client secret, or API key to enter. Run
+`/wellness-project:setup` if you would rather be walked through it.
+
 ### ChatGPT
 
 ChatGPT custom MCP apps use developer mode. Current OpenAI availability is plan-dependent: full MCP support including write/modify actions is available in beta for Business, Enterprise, and Edu, while Pro can connect MCPs with read/fetch permissions in developer mode.

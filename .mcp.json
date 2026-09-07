@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "wellness-project": {
+      "type": "http",
+      "url": "https://wellnessproject.ai/api/mcp"
+    }
+  }
+}
