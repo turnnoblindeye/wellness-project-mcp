@@ -173,7 +173,7 @@
     "annotations": {
       "title": "Update a meal",
       "readOnlyHint": false,
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": true,
       "openWorldHint": false
     },
@@ -467,7 +467,7 @@
     "annotations": {
       "title": "Log a workout",
       "readOnlyHint": false,
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": false
     },
@@ -804,7 +804,7 @@
     "annotations": {
       "title": "Update a workout",
       "readOnlyHint": false,
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": true,
       "openWorldHint": false
     },
