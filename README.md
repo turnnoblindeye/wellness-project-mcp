@@ -9,181 +9,198 @@
 
 [![MCP Marketplace](https://img.shields.io/badge/MCP%20Marketplace-Indexed-blueviolet)](https://getlulu.dev/mcps)
 
-**Connect Apple Health, Fitbit, Oura, and Google Health Connect to Claude, ChatGPT, Gemini Spark, and other MCP clients.** Wellness Project is a hosted Model Context Protocol (MCP) server: your devices sync into one account, and your assistant reads your workouts, sleep, nutrition, and recovery in plain English. No exports, no copy-paste, no community server to self-host.
+**Bring connected health and fitness data into Claude, ChatGPT, Gemini Spark, Grok, Mistral, and other MCP clients.** Wellness Project is a hosted Model Context Protocol server. Your devices and logs sync into one account, and supported assistants can read or update workouts, nutrition, sleep, recovery, body metrics, goals, labs, wellbeing, and more in plain English.
 
-Wellness Project is a free AI health app. This repository documents its public MCP server: the tool catalog, the schemas, the inline-chart widgets, and how to connect any MCP client to it.
+This repository is the public documentation and catalog for the hosted server. It is not a self-hosted backend and contains no private server implementation.
 
 - App: https://wellnessproject.ai
 - MCP endpoint: `https://wellnessproject.ai/api/mcp`
-- 60 tools across workouts, nutrition, sleep, wearables, body metrics, labs, recovery, runs, and more
-- 11 interactive chart widgets rendered inline in Claude and ChatGPT
+- **73 advertised public tools** generated from the production tool registry
+- **15 active interactive widgets** for compatible MCP Apps UI clients
+- OAuth 2.1 authentication with Dynamic Client Registration
 
 ---
 
-## Why this exists
-
-Most health and fitness services ship no MCP server of their own. There is **no official Fitbit MCP server, no Oura MCP server, no Hevy or TrainingPeaks MCP server**, so Claude and ChatGPT cannot read that data on their own. The GitHub results for those queries are mostly unmaintained community repos you would have to run, refresh tokens for, and keep alive yourself.
-
-Wellness Project is the hosted alternative. It connects to your devices over OAuth, ingests your workouts and recovery data, and exposes all of it to any MCP client through one authenticated endpoint. You connect once and it stays connected.
-
 ## What you can ask
 
-Once connected, you ask your AI naturally and it calls the matching tool:
+Once connected, ask naturally and the assistant can call the matching Wellness Project tool:
 
 - "How did my training look this week?"
 - "Show my sleep for the last month."
 - "How is my bench progressing?"
 - "Log today's lunch: chicken burrito bowl, about 700 calories."
 - "What was my resting heart rate trend vs my HRV this quarter?"
-- "How many rest days did I take this month?"
+- "How am I doing against my goals?"
+- "Log 16 ounces of water."
 
-Read tools pull your logged and synced data. Write tools log new entries. Chart tools render an interactive inline graph instead of a wall of numbers.
+Read tools return your logged and synced health data. Write tools add, update, or delete entries when you ask. Widget tools can render structured interactive views instead of a wall of numbers.
 
-## Connect Apple Health, Fitbit, or Oura to Claude
+## Connect Wellness Project to an MCP client
 
-Connect your device once at wellnessproject.ai, then add the MCP server to Claude or ChatGPT. The same hosted endpoint serves both, so connecting Apple Health to Claude, Fitbit to ChatGPT, or Oura to either works the same way. The steps are below.
+First create an account at https://wellnessproject.ai and connect the health sources you want under **Settings → Devices**. Every client below uses the same hosted endpoint:
 
-## Connect to Claude
+`https://wellnessproject.ai/api/mcp`
 
-**claude.ai (remote connector, recommended)**
-1. Create a free account at https://wellnessproject.ai and connect a device (Settings → Integrations).
-2. In Claude, go to **Settings → Connectors → Add custom connector**.
-3. Paste `https://wellnessproject.ai/api/mcp` and authorize with OAuth.
+Authentication is handled by OAuth. Personal API keys are not part of the current public connection flow.
 
-That is it. The connector carries across every conversation.
+### Claude
 
-**Desktop / scripted clients (API key)**
+1. Open Claude on the web.
+2. Go to **Customize → Connectors → Add custom connector**.
+3. Paste `https://wellnessproject.ai/api/mcp`.
+4. Leave Client ID and Client Secret blank if Claude shows those fields. Claude can register itself dynamically.
+5. Sign in to Wellness Project and authorize the connection.
 
-Headless and desktop clients use a long-lived personal API key instead of the OAuth flow. Generate one in **Settings → Claude** inside the app. The server speaks streamable-HTTP MCP and authenticates with a bearer token:
+### ChatGPT
 
-```
-POST https://wellnessproject.ai/api/mcp
-Authorization: Bearer YOUR_PERSONAL_API_KEY
-```
+ChatGPT custom MCP apps use developer mode. Current OpenAI availability is plan-dependent: full MCP support including write/modify actions is available in beta for Business, Enterprise, and Edu, while Pro can connect MCPs with read/fetch permissions in developer mode.
 
-For a client that supports remote HTTP MCP servers with custom headers, point it at that URL with the `Authorization` header above. For a stdio-only client, bridge to it with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
+1. Enable developer mode for your account or workspace as permitted by your ChatGPT plan.
+2. Create a custom MCP app from ChatGPT's Apps settings.
+3. Use `https://wellnessproject.ai/api/mcp` as the remote MCP server.
+4. Complete the Wellness Project OAuth flow.
 
-```json
-{
-  "mcpServers": {
-    "wellness-project": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://wellnessproject.ai/api/mcp",
-        "--header",
-        "Authorization: Bearer YOUR_PERSONAL_API_KEY"
-      ]
-    }
-  }
-}
-```
+OpenAI's current setup and plan details: https://help.openai.com/en/articles/12584461
 
-Rotate or revoke the key from the same settings screen at any time.
+### Gemini Spark
 
-## Connect to ChatGPT
+Custom MCP apps require Gemini Spark access and are added from the Gemini web app.
 
-The same server backs ChatGPT. Connect Wellness Project as a custom connector / plugin pointed at `https://wellnessproject.ai/api/mcp` and authorize. The identical tools and widgets are available there.
+1. Go to https://gemini.google.com.
+2. Open **Settings & help → Connected Apps**. If needed, open **Personal Intelligence → Connected Apps** first.
+3. Under **Custom apps for Spark**, choose **Add a custom app**.
+4. Enter `https://wellnessproject.ai/api/mcp` and click **Next**.
+5. Complete the Wellness Project OAuth flow.
 
-## Connect to Gemini Spark
+Google's current eligibility and availability rules: https://support.google.com/gemini/answer/17209137
 
-1. Go to https://gemini.google.com/spark.
-2. Open **Settings** in the bottom-left.
-3. Select **Personal intelligence**.
-4. Select **Connected apps**.
-5. Scroll to the bottom and choose **Add a custom app**.
-6. Enter `https://wellnessproject.ai/api/mcp`.
-7. Follow Google's prompts to connect and authorize Wellness Project.
+### Grok
 
-Gemini custom MCP apps are configured from Gemini Spark, so start at
-`gemini.google.com/spark` rather than a standard Gemini chat.
+1. Go to https://grok.com/connectors and choose **New Connector → Custom**.
+2. Paste `https://wellnessproject.ai/api/mcp`.
+3. Leave Client ID and Client Secret blank if those fields appear.
+4. Complete the Wellness Project OAuth flow.
+
+Grok connector availability may depend on your Grok plan.
+
+### Mistral Le Chat
+
+1. In Le Chat, open **Intelligence → Connectors → Add Connector → Custom MCP Connector**.
+2. Paste `https://wellnessproject.ai/api/mcp`.
+3. Leave Client ID and Client Secret blank if those fields appear.
+4. Complete the Wellness Project OAuth flow.
+
+Workspace permissions may require an owner or admin to add a connector.
 
 ## Demo
 
-A short screen recording of the Wellness Project connector running inside ChatGPT: connecting, asking questions in plain English, and the tools returning live data.
+A short screen recording of the Wellness Project connector running inside ChatGPT:
 
 <video src="https://github.com/turnnoblindeye/wellness-project-mcp/raw/main/media/chatgpt-connector-demo.mp4" controls muted></video>
 
 **[Download / watch the demo](./media/chatgpt-connector-demo.mp4)**
 
-## Inline chart widgets
+## Interactive widgets
 
-Eleven tools render interactive charts inline through the [MCP Apps UI](https://modelcontextprotocol.io) extension, not plain text:
+Fifteen active tools render interactive views through the MCP Apps UI extension in compatible clients:
 
-| Ask | Widget |
+| Ask | Widget tool |
 |---|---|
-| "How did my week look?" | weekly Fit Score |
-| "Break down my Fit Score" | today's Fit Score by component |
-| "Show my workouts" | training activity + heart points |
-| "Show that workout" | a single session's exercises and sets |
-| "Show my macros" | calories + protein/carbs/fat vs targets |
-| "How's my sleep?" | hours + sleep score |
-| "Steps this week?" | step counts vs goal |
-| "How's my running?" | running mileage |
-| "My weight trend" | body weight + body-fat % |
-| "Recovery trend" | resting heart rate + HRV |
-| "How's my bench progressing?" | estimated 1RM progression |
+| "Give me a health overview" | `show_health_overview` |
+| "How did my Fit Score look?" | `show_week_fit_score` |
+| "Show my workouts" | `show_week_workouts` |
+| "Show that workout" | `show_workout` |
+| "Show my macros" | `show_week_macros` |
+| "Show my meal diary" | `show_meal_diary` |
+| "How's my sleep trending?" | `show_week_sleep` |
+| "Show last night's sleep" | `show_sleep_detail` |
+| "Steps this week?" | `show_week_steps` |
+| "My weight trend" | `show_body_weight` |
+| "Show my body composition" | `show_body_composition` |
+| "Recovery trend" | `show_recovery` |
+| "How's my running?" | `show_runs` |
+| "How's my bench progressing?" | `show_exercise_progression` |
+| "Show my wellbeing" | `show_wellbeing` |
 
-Each chart has a 7d / 30d / 90d / 1y range toggle and hover tooltips, and reads live from your own account.
+Many trend widgets support multiple time ranges; detail widgets use the date or record relevant to the request.
 
 ## Tool catalog
 
-The full list of 60 tools, grouped by domain, is in **[TOOLS.md](./TOOLS.md)**. The machine-readable schemas (name, description, JSON Schema input, MCP annotations) are in **[catalog/tools.json](./catalog/tools.json)** and mirror exactly what the server returns from `tools/list`.
+The complete production-generated list of **73 advertised public tools**, grouped by domain, is in **[TOOLS.md](./TOOLS.md)**. The machine-readable descriptions, annotations, and JSON Schemas are in **[catalog/tools.json](./catalog/tools.json)**.
 
-Every tool sets standard MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). All tools have `openWorldHint: false`: they operate only on the authenticated user's own account data.
+Both files are generated from the same production tool registry used by `tools/list`. Admin-only tools and retired tools that remain callable only for older cached clients are not advertised in this catalog.
 
-## Data sources
+Do not edit the generated catalog by hand.
 
-| Source | Syncs |
+## Data sources and integrations
+
+Wellness Project combines native mobile health stores, direct integrations, relay sources, and manual/chat logging.
+
+| Source | Current support |
 |---|---|
-| Apple Health (HealthKit) | steps, sleep, heart rate, HRV |
-| Google Health Connect | steps, sleep, heart rate, HRV |
-| Fitbit | steps, Active Zone Minutes, sleep stages, resting heart rate, HRV |
-| Oura | sleep, readiness, heart rate, HRV |
-| Manual / chat | workouts, meals, body metrics, labs, injuries, supplements, and more |
+| Apple Health | Native iOS health and fitness sync |
+| Google Health Connect | Native Android health and fitness sync |
+| Fitbit / Google Health | Activity, sleep, heart, workout, body, and nutrition data when available |
+| Oura | Sleep, readiness/recovery, heart, and activity data |
+| Withings | Body, sleep, activity, heart, blood pressure, and other supported health data |
+| Wyze | Supported Wyze health data |
+| Hevy | Strength workout history via direct integration |
+| Ultrahuman | Ring data and supported metabolic/CGM data |
+| Liftosaur | Strength workout history via direct integration |
+| Polar | Activity, sleep, recovery, heart, and training data |
+| WHOOP | Direct integration is rolling out behind availability gating |
+| Manual / chat | Workouts, meals, hydration, body metrics, labs, injuries, supplements, goals, wellbeing, and more |
+
+Garmin, Samsung Health, Amazfit/Zepp, Coros, Wahoo, Strava, Peloton, smart scales, and other compatible sources can also reach Wellness Project through Apple Health or Health Connect when those services write the relevant data there.
+
+## Pricing and status
+
+Pricing below reflects the current production configuration as of September 7, 2026. Local app-store pricing may vary.
+
+| Plan | Price | Status |
+|---|---:|---|
+| Free Basic | $0 | Logging and editing remain free; starting October 15, 2026, Free includes 3 analysis questions per day |
+| Founder Pro monthly | $4.99/month | Founder pricing through October 15, 2026 |
+| Founder Pro annual | $39.99/year | Founder pricing through October 15, 2026 |
+| Founder Lifetime | $199 one-time | Limited founder option, sunsetting |
+| Pro monthly | $9.99/month | Standard pricing |
+| Pro annual | $99.99/year | Standard pricing |
 
 ## Privacy and auth
 
-- Access is authenticated per user, by OAuth (claude.ai) or a personal API key (Desktop and scripted clients).
-- API keys are stored hashed; the plaintext is shown to you once and never persisted.
-- Every tool is scoped to the signed-in user. Row-level security enforces that a token can only read or write its own account.
-- You can revoke a connector or rotate a key from app settings at any time.
+- The public MCP endpoint uses OAuth 2.1; supported clients can register dynamically.
+- Every MCP request is scoped to the authenticated Wellness Project account.
+- Row-level security protects user-owned records in the data layer.
+- Connector access can be revoked without self-hosting or rotating a long-lived personal API key.
 
 Wellness Project is informational software, not a medical product.
 
 ## FAQ
 
-### How do I connect Apple Health to Claude?
-Create a free account at wellnessproject.ai and sync Apple Health (Settings, Integrations). In Claude, open Settings, Connectors, Add custom connector, paste `https://wellnessproject.ai/api/mcp`, and authorize. Claude can then read your Apple Health data in any conversation.
+### Do I have to self-host anything?
 
-### How do I connect Fitbit to Claude and ChatGPT?
-Connect Fitbit once at wellnessproject.ai over OAuth. Then add `https://wellnessproject.ai/api/mcp` as a custom connector in Claude or as a custom connector in ChatGPT. One connection serves both assistants.
+No. `https://wellnessproject.ai/api/mcp` is the hosted production server. This GitHub repository publishes documentation and schemas only.
 
-### How do I connect Oura to Claude?
-Connect Oura at wellnessproject.ai, then add the same MCP endpoint in Claude. Your Oura sleep, readiness, and HRV become available to ask about in plain English.
+### Does the same endpoint work across AI assistants?
 
-### Is there an official Fitbit, Oura, or Apple Health MCP server?
-No. None of these ship their own MCP server, and the community repos you find on GitHub are unofficial servers you have to run and refresh tokens for yourself. Wellness Project is the hosted alternative: connect your device once and it stays connected, with nothing to self-host.
+Yes. Claude, eligible ChatGPT accounts/workspaces, Gemini Spark, Grok, Mistral, and other compatible remote MCP clients can use the same endpoint. Client-side MCP availability and permissions vary by product and plan.
 
-### Does this work with ChatGPT as well as Claude?
-Yes. The same server backs both. Point a custom connector at `https://wellnessproject.ai/api/mcp` in either tool.
+### Is Wellness Project free?
 
-### Do I have to self-host or run anything?
-No. The server is hosted. You connect your devices through the app and add one URL to your AI client.
-
-### Is it free?
-Yes. Wellness Project is free during early access.
+Free Basic is available. Paid Founder Pro and standard Pro plans add analysis capacity and other paid capabilities; current pricing is listed above.
 
 ### Is my health data private?
-Access is authenticated per user by OAuth or a personal API key. Every tool is scoped to the signed-in user, row-level security enforces that a token reads only its own account, and you can revoke access at any time.
+
+MCP access requires an authenticated OAuth grant and each tool operates on the signed-in user's account. You can revoke connector access when you no longer want a client connected.
 
 ## Related
 
+- Works with Wellness Project: https://wellnessproject.ai/works-with
 - Connect Apple Health to Claude: https://wellnessproject.ai/integrations/apple-health-to-claude
-- Connect Fitbit to Claude and ChatGPT: https://wellnessproject.ai/integrations/fitbit-mcp
+- Fitbit MCP: https://wellnessproject.ai/integrations/fitbit-mcp
 - Claude integration: https://wellnessproject.ai/integrations/claude
 - ChatGPT integration: https://wellnessproject.ai/integrations/chatgpt
 
 ## License
 
-The tool catalog and schemas in this repository are published under the [MIT License](./LICENSE) so MCP clients and directories can reference them freely. "Wellness Project" and the app itself remain the property of Wellness Project LLC. See [NOTICE](./NOTICE) for exactly what the grant covers.
+The tool catalog and schemas in this repository are published under the [MIT License](./LICENSE) so MCP clients and directories can reference them freely. "Wellness Project" and the app itself remain the property of Wellness Project LLC. See [NOTICE](./NOTICE) for the scope of the grant.
