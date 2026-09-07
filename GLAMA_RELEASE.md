@@ -38,6 +38,6 @@ Then:
 1. Sync Server so Glama checks out current `main` and clear any pinned old commit if shown.
 2. Deploy / Build and wait for the build test to pass.
 3. Make Release / Build & Release.
-4. Publish version `1.0.0` with changelog: `Initial Glama release for the hosted Wellness Project MCP.`
+4. Publish version `1.2.1` with changelog: `Initial Glama release of Wellness Project MCP v1.2.1, matching the current production server and public tool surface.`
 
 The adapter serves `catalog/tools.json` locally for `tools/list`, so the release build can be inspected without a real user credential. Live `tools/call` requests are forwarded to the canonical hosted MCP using `WELLNESS_PROJECT_API_KEY`.

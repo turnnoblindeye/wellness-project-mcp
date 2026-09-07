@@ -1,6 +1,6 @@
 {
   "name": "wellness-project-mcp-glama-adapter",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Thin stdio adapter for Glama builds; production MCP remains hosted at https://wellnessproject.ai/api/mcp.",
   "license": "MIT",
