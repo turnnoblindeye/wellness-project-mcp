@@ -1,13 +1,15 @@
 {
   "name": "wellness-project",
   "displayName": "Wellness Project",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Read and log workouts, nutrition, sleep, recovery, body metrics, labs, and goals from Apple Health, Fitbit, Oura, and Health Connect through the hosted Wellness Project MCP server.",
   "author": {
     "name": "Wellness Project LLC",
     "url": "https://wellnessproject.ai"
   },
   "homepage": "https://wellnessproject.ai",
+  "icon": "./assets/icon.png",
+  "privacyPolicyUrl": "https://wellnessproject.ai/privacy",
   "repository": "https://github.com/turnnoblindeye/wellness-project-mcp",
   "license": "MIT",
   "keywords": [

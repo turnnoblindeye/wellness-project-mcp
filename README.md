@@ -141,9 +141,7 @@ Workspace permissions may require an owner or admin to add a connector.
 
 A short screen recording of the Wellness Project connector running inside ChatGPT:
 
-<video src="https://github.com/turnnoblindeye/wellness-project-mcp/raw/main/media/chatgpt-connector-demo.mp4" controls muted></video>
-
-**[Download / watch the demo](./media/chatgpt-connector-demo.mp4)**
+**[Watch the demo](https://github.com/turnnoblindeye/wellness-project-mcp/releases/download/v1.2.1/chatgpt-connector-demo.mp4)**
 
 ## Interactive widgets
 

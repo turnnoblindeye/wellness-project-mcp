@@ -16,10 +16,8 @@ catalog only. It contains no server implementation.
 
 Do not set this up as a local `stdio` server. The `server.mjs` and `package.json`
 at the repository root are a Glama build adapter, not the way users connect: the
-adapter serves the static tool catalog and forwards live calls only when a
-personal `WELLNESS_PROJECT_API_KEY` is set, and personal API keys are not part of
-the public connection flow. Running `npm start` will produce a server that cannot
-answer a single real query. Configure the remote endpoint instead.
+adapter serves the static tool catalog and cannot run tools. Running `npm start`
+will produce a server that cannot answer a single real query. Configure the remote endpoint instead.
 
 ## Prerequisite
 
