@@ -10,28 +10,7 @@ Use this build spec:
 
 - Build steps: `["npm install"]`
 - CMD arguments: `["node", "./server.mjs"]`
-- Environment variables schema:
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "WELLNESS_PROJECT_API_KEY": {
-      "type": "string",
-      "description": "Personal Wellness Project API key used for live tool calls through the Glama deployment."
-    }
-  },
-  "required": ["WELLNESS_PROJECT_API_KEY"]
-}
-```
-
-- Placeholder parameters:
-
-```json
-{
-  "WELLNESS_PROJECT_API_KEY": "glama-build-placeholder"
-}
-```
+- Environment variables: none
 
 Then:
 
@@ -40,4 +19,4 @@ Then:
 3. Make Release / Build & Release.
 4. Publish version `1.2.1` with changelog: `Initial Glama release of Wellness Project MCP v1.2.1, matching the current production server and public tool surface.`
 
-The adapter serves `catalog/tools.json` locally for `tools/list`, so the release build can be inspected without a real user credential. Live `tools/call` requests are forwarded to the canonical hosted MCP using `WELLNESS_PROJECT_API_KEY`.
+The adapter serves `catalog/tools.json` locally for `tools/list`, so the release build can be inspected without any credential. It makes no network calls; `tools/call` returns an error pointing at the hosted endpoint, which authenticates each user with OAuth.
