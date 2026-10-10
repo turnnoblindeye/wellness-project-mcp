@@ -1,11 +1,12 @@
 {
   "name": "wellness-project",
   "displayName": "Wellness Project",
-  "version": "1.0.1",
-  "description": "Read and log workouts, nutrition, sleep, recovery, body metrics, labs, and goals from Apple Health, Fitbit, Oura, and Health Connect through the hosted Wellness Project MCP server.",
+  "version": "1.0.2",
+  "description": "Connect Claude to your health and fitness data. Analyze workouts, sleep, recovery and nutrition, track progress, and log activities.",
   "author": {
     "name": "Wellness Project LLC",
-    "url": "https://wellnessproject.ai"
+    "url": "https://wellnessproject.ai",
+    "email": "support@wellnessproject.ai"
   },
   "homepage": "https://wellnessproject.ai",
   "icon": "./assets/icon.png",
@@ -23,5 +24,8 @@
     "nutrition",
     "workouts",
     "wearables"
-  ]
+  ],
+  "documentationUrl": "https://wellnessproject.ai/integrations/claude",
+  "supportUrl": "https://wellnessproject.ai/support",
+  "termsOfServiceUrl": "https://wellnessproject.ai/terms"
 }
