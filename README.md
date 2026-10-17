@@ -10,7 +10,7 @@
 [![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/wellnessproject-ai)
 [![Wellness Project MCP server — quality and maintenance score on Glama](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp/badges/score.svg)](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp)
 
-**Bring connected health and fitness data into Claude, ChatGPT, Gemini Spark, Grok, Mistral, and other MCP clients.** Wellness Project is a hosted Model Context Protocol server. Your devices and logs sync into one account, and supported assistants can read or update workouts, nutrition, sleep, recovery, body metrics, goals, labs, wellbeing, and more in plain English.
+**Bring connected health and fitness data into Claude, ChatGPT, Gemini Spark, Gemini CLI, Grok, Mistral, and other MCP clients.** Wellness Project is a hosted Model Context Protocol server. Your devices and logs sync into one account, and supported assistants can read or update workouts, nutrition, sleep, recovery, body metrics, goals, labs, wellbeing, and more in plain English.
 
 This repository is the public documentation and catalog for the hosted server. It is not a self-hosted backend and contains no private server implementation.
 
@@ -65,6 +65,18 @@ this server's configuration and a setup skill.
 Restart Claude Code, then run `/mcp`, select **wellness-project**, and authorize.
 There is no client ID, client secret, or API key to enter. Run
 `/wellness-project:setup` if you would rather be walked through it.
+
+### Gemini CLI
+
+Wellness Project is listed in the [official Gemini CLI Extensions Gallery](https://geminicli.com/extensions/). Install the extension from this public repository:
+
+```bash
+gemini extensions install https://github.com/turnnoblindeye/wellness-project-mcp
+```
+
+Restart Gemini CLI, then run `/mcp list` to check for the `wellness-project` server. If authentication is needed, run `/mcp auth wellness-project` and sign in to Wellness Project in your browser. After authorization, ask Gemini about your workouts, nutrition, sleep, recovery, or goals, or request a log update.
+
+This connects to the hosted MCP endpoint, so no local server or personal API key is needed. Gemini CLI's OAuth flow requires a browser and access to a localhost callback. See [Gemini CLI's MCP authentication documentation](https://geminicli.com/docs/tools/mcp-server/) for details.
 
 ### Cline
 
@@ -226,7 +238,7 @@ No. `https://wellnessproject.ai/api/mcp` is the hosted production server. This G
 
 ### Does the same endpoint work across AI assistants?
 
-Yes. Claude, eligible ChatGPT accounts/workspaces, Gemini Spark, Grok, Mistral, and other compatible remote MCP clients can use the same endpoint. Client-side MCP availability and permissions vary by product and plan.
+Yes. Claude, eligible ChatGPT accounts/workspaces, Gemini Spark, Gemini CLI, Grok, Mistral, and other compatible remote MCP clients can use the same endpoint. Client-side MCP availability and permissions vary by product and plan.
 
 ### Is Wellness Project free?
 
