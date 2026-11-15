@@ -4584,6 +4584,14 @@
           },
           "description": "Warning keys the user explicitly acknowledged after a guarded create attempt. Omit otherwise."
         },
+        "goal_mode": {
+          "type": "string",
+          "description": "For weight_loss. Use maintain to keep starting weight through the end date, or change to gain/lose weight. Set when the goal is created. Set at create, not editable later.",
+          "enum": [
+            "change",
+            "maintain"
+          ]
+        },
         "start_weight_lb": {
           "type": "number",
           "description": "For weight_loss. Starting body weight. Required on create. Set at create, not editable later. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
@@ -4591,7 +4599,7 @@
         },
         "target_weight_lb": {
           "type": "number",
-          "description": "For weight_loss. Target body weight. Required on create. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
+          "description": "For weight_loss. Required for change mode; leave blank to maintain starting weight. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
           "minimum": 1
         },
         "weeks": {
@@ -4811,6 +4819,14 @@
           },
           "description": "Warning keys the user explicitly acknowledged after a guarded create attempt. Omit otherwise."
         },
+        "goal_mode": {
+          "type": "string",
+          "description": "For weight_loss. Use maintain to keep starting weight through the end date, or change to gain/lose weight. Set when the goal is created. Set at create, not editable later.",
+          "enum": [
+            "change",
+            "maintain"
+          ]
+        },
         "start_weight_lb": {
           "type": "number",
           "description": "For weight_loss. Starting body weight. Required on create. Set at create, not editable later. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
@@ -4818,7 +4834,7 @@
         },
         "target_weight_lb": {
           "type": "number",
-          "description": "For weight_loss. Target body weight. Required on create. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
+          "description": "For weight_loss. Required for change mode; leave blank to maintain starting weight. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
           "minimum": 1
         },
         "weeks": {
@@ -6353,7 +6369,7 @@
   },
   {
     "name": "deep_analysis",
-    "description": "Deep Analysis: read-only SQLite SQL over a private copy of the user's full health history.\nUse for: questions spanning several data types (training with sleep, nutrition with weight); long or all-time horizons; trends, progress, period comparisons; totals, averages, rankings, correlations; anything focused tools would need many calls for; any request for a \"deep analysis\". For one recent fact (today's workout, last night's sleep) use the focused tool.\nmode=discover: topics -> matching tables with columns, units, row counts, dates; no topics -> table index.\nmode=query: one SELECT/WITH. period or date_from/date_to limits the copy (faster); omit for all history.\nEvery result carries calendar; the first also carries user_rules. Take relative dates from calendar or period, never your own math. Results list coverage per table (dates, rows, cuts): a short or empty result is not proof data is missing.\nScope dates to the request. Joining sessions to sets repeats session values: aggregate each level alone, then join. Not every session is lifting: filter by activity for strength questions. An association is not a cause.\nValues stored in lb, mi, kcal, C: convert to user_rules units. wearable_daily, sleep_log, body_metrics, runs hold the app's resolved value per day; *_by_source hold raw per-device rows. Dates are YYYY-MM-DD. Timestamp tables (hydration, caffeine, doses, cardiac events) are UTC: group and filter them by local_date. glucose_readings_daily and hydration_entries_daily are one row per local day and source: use them for long ranges; if a raw copy is refused for size, query the _daily table or narrow the dates.\nHelpers: median(x), percentile(x,p), stddev(x) (NULL under 3 values), corr(x,y) (NULL under 8 pairs), corr_n(x,y) (pairs used), week_start(date[,dow 0=Sun 1=Mon]), month_start(date). Report n with any statistic.",
+    "description": "Deep Analysis: read-only SQLite SQL over a private copy of the user's full health history.\nUse for: questions spanning several data types (training with sleep, nutrition with weight); long or all-time horizons; trends, progress, period comparisons; totals, averages, rankings, correlations; anything focused tools would need many calls for; any request for a \"deep analysis\". For one recent fact (today's workout, last night's sleep) use the focused tool.\nmode=discover: topics -> matching tables with columns, units, row counts, dates; no topics -> table index.\nmode=query: one SELECT/WITH. period or date_from/date_to limits the copy (faster); omit for all history.\nEvery result carries calendar; the first also carries user_rules. Take relative dates from calendar or period, never your own math. Results list coverage per table (dates, rows, cuts): a short or empty result is not proof data is missing.\nScope dates to the request. Joining sessions to sets repeats session values: aggregate each level alone, then join. Not every session is lifting: filter by activity for strength questions. An association is not a cause.\nValues stored in lb, mi, kcal, C: convert to user_rules units. Plain table names (wearable_daily, sleep_log, body_metrics, runs, food_log, hydration_entries) hold what the app counts; *_by_source hold raw per-source rows: never total those. Dates are YYYY-MM-DD. Timestamps are UTC: group and filter by local_date. glucose_readings_daily and hydration_entries_daily are per local day and source, for long ranges; if a copy is refused for size, query the _daily table or narrow the dates.\nHelpers: median(x), percentile(x,p), stddev(x) (NULL under 3 values), corr(x,y) (NULL under 8 pairs), corr_n(x,y) (pairs used), week_start(date[,dow 0=Sun 1=Mon]), month_start(date). Report n with any statistic.",
     "annotations": {
       "title": "Deep Analysis",
       "readOnlyHint": true,
