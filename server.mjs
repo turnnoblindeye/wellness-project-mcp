@@ -27,7 +27,7 @@ const TOOLS = JSON.parse(
 const server = new Server(
   {
     name: 'wellness-project-mcp',
-    version: '1.2.1',
+    version: '1.3.0',
   },
   {
     capabilities: {
