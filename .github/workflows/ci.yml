@@ -21,5 +21,8 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install JSON Schema validator
+        run: python -m pip install "jsonschema>=4.23,<5"
+
       - name: Validate public MCP catalog
         run: python scripts/validate_catalog.py

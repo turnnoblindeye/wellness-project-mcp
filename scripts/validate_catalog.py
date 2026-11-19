@@ -5,6 +5,8 @@ import json
 import re
 import sys
 from pathlib import Path
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "catalog" / "tools.json"
@@ -75,6 +77,24 @@ def main() -> int:
 
         if not isinstance(input_schema, dict) or input_schema.get("type") != "object":
             errors.append(f"{prefix}.inputSchema must be an object schema")
+        else:
+            try:
+                Draft202012Validator.check_schema(input_schema)
+            except SchemaError as exc:
+                errors.append(f"{prefix}.inputSchema invalid JSON Schema: {exc.message}")
+
+        output_schema = tool.get("outputSchema")
+        if output_schema is not None:
+            try:
+                Draft202012Validator.check_schema(output_schema)
+            except SchemaError as exc:
+                errors.append(f"{prefix}.outputSchema invalid JSON Schema: {exc.message}")
+
+        if any(
+            re.search(r"\bundefined\b", value)
+            for value in _nested_strings(tool)
+        ):
+            errors.append(f"{prefix} contains an unresolved 'undefined' placeholder")
 
         if not isinstance(annotations, dict):
             errors.append(f"{prefix}.annotations must be an object")
@@ -157,6 +177,17 @@ def main() -> int:
 
     print(f"Catalog validation passed: {tool_count} tools")
     return 0
+
+
+def _nested_strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from _nested_strings(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _nested_strings(child)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,6 @@
 [![MCP status](https://mcpi.app/servers/wellness-project/badge.svg)](https://mcpi.app/servers/wellness-project)
 [![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/wellnessproject-ai)
 [![Wellness Project MCP server — quality and maintenance score on Glama](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp/badges/score.svg)](https://glama.ai/mcp/servers/turnnoblindeye/wellness-project-mcp)
-[![AllMCPs Verified](https://allmcps.com/api/badge/wellness-project)](https://allmcps.com/mcp/wellness-project?verify=77e8c955-0449-43c9-8ef3-99d99b06c29a)
 
 **Bring connected health and fitness data into Claude, ChatGPT, Gemini Spark, Gemini CLI, Grok, Mistral, and other MCP clients.** Wellness Project is a hosted Model Context Protocol server. Your devices and logs sync into one account, and supported assistants can read or update workouts, nutrition, sleep, recovery, body metrics, goals, labs, wellbeing, and more in plain English.
 
@@ -17,7 +16,7 @@ This repository is the public documentation and catalog for the hosted server. I
 
 - App: https://wellnessproject.ai
 - MCP endpoint: `https://wellnessproject.ai/api/mcp`
-- **87 advertised public tools** generated from the production tool registry
+- **85 advertised public tools** generated from the production tool registry
 - **15 active interactive widgets** for compatible MCP Apps UI clients
 - OAuth 2.1 authentication with Dynamic Client Registration
 
@@ -182,7 +181,7 @@ Many trend widgets support multiple time ranges; detail widgets use the date or 
 
 ## Tool catalog
 
-The complete production-generated list of **87 advertised public tools**, grouped by domain, is in **[TOOLS.md](./TOOLS.md)**. The machine-readable descriptions, annotations, and JSON Schemas are in **[catalog/tools.json](./catalog/tools.json)**.
+The complete production-generated list of **85 advertised public tools**, grouped by domain, is in **[TOOLS.md](./TOOLS.md)**. The machine-readable descriptions, annotations, and JSON Schemas are in **[catalog/tools.json](./catalog/tools.json)**.
 
 Both files are generated from the same production tool registry used by `tools/list`. Admin-only tools and retired tools that remain callable only for older cached clients are not advertised in this catalog.
 
