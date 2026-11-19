@@ -56,7 +56,7 @@ not that the connection failed.
 
 Every tool is scoped to the signed-in user's own account and enforced by
 row-level security. The catalog of tools is in
-[TOOLS.md](../../TOOLS.md) and the machine-readable schemas are in
-[catalog/tools.json](../../catalog/tools.json).
+[TOOLS.md](https://github.com/turnnoblindeye/wellness-project-mcp/blob/main/TOOLS.md) and the machine-readable schemas are in
+[catalog/tools.json](https://github.com/turnnoblindeye/wellness-project-mcp/blob/main/catalog/tools.json).
 
 Wellness Project is informational software, not a medical product.
