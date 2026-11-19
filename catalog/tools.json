@@ -1,7 +1,7 @@
 [
   {
     "name": "log_meal",
-    "description": "RECIPE SAVE:\nintent=create/save recipe not eaten -> save_as_recipe=true, recipe_only=true\nintent=log eaten meal + save recipe -> save_as_recipe=true, recipe_only=false/omit\nrecipe_only=true -> food_log_write=false; save_as_recipe must be true\nrecipe_only=true -> recipe_title=<name>\nrecipe_only=true -> recipe_servings=<whole-batch servings; default 1>\nrecipe_only=true -> food_items=<WHOLE-BATCH ingredients with amounts>\nrecipe_only=true -> calories/protein_g/fat_g/carbs_g=<WHOLE-BATCH totals; estimate, never ask>\nrecipe_only=true -> estimate=<WHOLE-BATCH compact nutrient estimate when available>\n\nLog a meal to the user's food diary. use: logging request or concrete meal consumed. question/habit/hypothetical alone: no write.\n\nINFER:\n- date: today, or from context (\"yesterday\", \"last night\"). For an attached meal photo with <photo_capture_times>, use that photo's local date unless the user explicitly states a different date.\n- meal_time: for an attached meal photo with <photo_capture_times>, send that photo's local HH:MM unless the user explicitly states a different time/date. User-stated timing always wins. Otherwise omit unless the user gave a real clock time.\n- meal_type: when meal_time is supplied, OMIT meal_type unless the user's wording explicitly names or clearly anchors a category; the server assigns the category from meal_time. Without meal_time, for a current-day plain meal/food log omit meal_type and let the server assign it from the user's resolved local clock (00:00-04:00 Snack, 04:00-10:30 Breakfast, 10:30-15:00 Lunch, 15:00-17:00 Snack, 17:00-21:30 Dinner, 21:30-24:00 Snack). Send meal_type when the user's wording explicitly names or clearly anchors a category (\"breakfast\", \"for lunch\", \"post-workout shake\"), or when backdating and neither capture time nor another honest clock signal exists.\n\nMACRO SOURCE: strongest evidence wins. Never replace known stored macros with a fresh estimate.\n1. REPEATS (unless a saved recipe is clearly invoked): if the user refers to a previously logged item (\"same\", \"another\", \"more\", \"again\", or equivalent in any language), OR names a food plausibly matching a recent log even without a repeat keyword (e.g. \"two eggs\"), call list_meals for the referenced/recent date range BEFORE estimating. If one row unambiguously matches, reuse its stored calories/protein_g/fat_g/carbs_g/alcohol_g and scale by the quantity ratio when the row's quantity is known. If the match or quantity is ambiguous, ask instead of re-estimating. If nothing matches, continue below.\n2. SAVED RECIPES: referenced or selected? YES -> ALWAYS pass recipe_name (saved title) and recipe_multiplier (0.5 for half). Use stored recipe nutrition x portion deterministically; estimate only missing values or added_food_items, and sum additions with the recipe portion. NEVER log a referenced recipe as a generic food_items estimate.\n3. BRAND NAMES: for a branded, restaurant, or specific product, use published macros for the stated size/variant before a generic estimate.\n4. Otherwise estimate every macro from the food description. Never ask the user for macros.\n\nMACROS: final stored meal must contain calories, protein_g, fat_g and carbs_g. recipe_name supplies stored core values; estimate and pass only missing core values or explicit changes. Without a recipe, pass food_items and those four. No partial core macros or placeholders. Saturated fat and fiber are expanded nutrients, never required for log_meal. Pass saturated_fat_g/fiber_g only when already known from strong evidence; otherwise omit them. When expanded nutrient tracking is enabled, the gated nutrient estimator can fill them; when disabled they remain unset. 0 is a real value only when the food truly contains none of that nutrient. Ask only if food_items are absent and no recipe_name applies.\n\nFASTING: if the user ate nothing / fasted all day, log one \"Fast day\" Snack with every macro 0.\n\nESTIMATE: The optional compact nutrient estimate may be omitted when the nutrient ID dictionary is unavailable. The server estimates missing nutrients.\nOmit for an unchanged saved recipe; with added_food_items, estimate that addition only. Otherwise supply when available; the server estimates missing values.\n\nDUPLICATES: if this tool returns a duplicate error, tell the user what's already logged and ask whether this is a separate serving (retry with force=true) or should update the existing entry instead (update_meal with adjusted values).\n\nDRINKS / HYDRATION: this is the single write path for consumed drinks too. Known or reasonably inferable drink volume (tea, coffee, milk, juice, shakes, smoothies, etc.) → always report fluids, even if also contributes calories/macros/alcohol. Food moisture → omit. The server decides whether hydration tracking is enabled; never use a separate hydration write tool. A plain fluid-only intake may omit food_items and macros and send only fluids. For alcoholic drinks, include that drink's alcohol_g in its fluid item; if there is exactly one drink, the top-level alcohol_g can stand in.\n\nCAFFEINE / DRINKS: this is the single assistant write path for caffeine too. Drinks only; exclude food moisture. When the user consumed a drink and its volume is known or reasonably inferable, include it in fluids so hydration is recorded; if the drink is caffeinated, include caffeine in the same call too. Do not leave a known-volume drink only in food_items. Each caffeine item needs caffeine_mg and may optionally include source_type. The date comes from the intake date. Preserve exact user-provided milligrams; for vague coffee/tea/energy-drink/pre-workout descriptions, estimate caffeine with the same nutrition-estimation judgment used for meal macros. Never use separate hydration or caffeine write tools. A drink-only or caffeine-only intake may omit food_items/macros.",
+    "description": "RECIPE SAVE:\nintent=create/save recipe not eaten -> save_as_recipe=true, recipe_only=true\nintent=log eaten meal + save recipe -> save_as_recipe=true, recipe_only=false/omit\nrecipe_only=true -> food_log_write=false; save_as_recipe must be true\nrecipe_only=true -> recipe_title=<name>\nrecipe_only=true -> recipe_servings=<whole-batch servings; default 1>\nrecipe_only=true -> food_items=<WHOLE-BATCH ingredients with amounts>\nrecipe_only=true -> calories/protein_g/fat_g/carbs_g=<WHOLE-BATCH totals; estimate, never ask>\nrecipe_only=true -> estimate=<WHOLE-BATCH compact nutrient estimate when available>\n\nLog a meal to the user's food diary. use: logging request or concrete meal consumed. question/habit/hypothetical alone: no write.\n\nINFER:\n- date: today, or from context (\"yesterday\", \"last night\"). For an attached meal photo with <photo_capture_times>, use that photo's local date unless the user explicitly states a different date.\n- meal_time: for an attached meal photo with <photo_capture_times>, send that photo's local HH:MM unless the user explicitly states a different time/date. User-stated timing always wins. Otherwise omit unless the user gave a real clock time.\n- meal_type: when meal_time is supplied, OMIT meal_type unless the user's wording explicitly names or clearly anchors a category; the server assigns the category from meal_time. Without meal_time, for a current-day plain meal/food log omit meal_type and let the server assign it from the user's resolved local clock (00:00-04:00 Snack, 04:00-10:30 Breakfast, 10:30-15:00 Lunch, 15:00-17:00 Snack, 17:00-21:30 Dinner, 21:30-24:00 Snack). Send meal_type when the user's wording explicitly names or clearly anchors a category (\"breakfast\", \"for lunch\", \"post-workout shake\"), or when backdating and neither capture time nor another honest clock signal exists.\n\nMACRO SOURCE: strongest evidence wins. Never replace known stored macros with a fresh estimate.\n1. REPEATS (unless a saved recipe is clearly invoked): if the user refers to a previously logged item (\"same\", \"another\", \"more\", \"again\", or equivalent in any language), OR names a food plausibly matching a recent log even without a repeat keyword (e.g. \"two eggs\"), call list_meals for the referenced/recent date range BEFORE estimating. If one row unambiguously matches, reuse its stored calories/protein_g/fat_g/carbs_g/alcohol_g and scale by the quantity ratio when the row's quantity is known. If the match or quantity is ambiguous, ask instead of re-estimating. If nothing matches, continue below.\n2. SAVED RECIPES: referenced or selected? YES -> ALWAYS pass recipe_name (saved title) and recipe_multiplier (0.5 for half). Use stored recipe nutrition x portion deterministically; estimate only missing values or added_food_items, and sum additions with the recipe portion. NEVER log a referenced recipe as a generic food_items estimate.\n3. BRAND NAMES: for a branded, restaurant, or specific product, use published macros for the stated size/variant before a generic estimate.\n4. Otherwise estimate every macro from the food description. Never ask the user for macros.\n\nMACROS: final stored meal must contain calories, protein_g, fat_g and carbs_g. recipe_name supplies stored core values; estimate and pass only missing core values or explicit changes. Without a recipe, pass food_items and those four. No partial core macros or placeholders. Saturated fat and fiber are expanded nutrients, never required for log_meal. Pass saturated_fat_g/fiber_g only when already known from strong evidence; otherwise omit them. When expanded nutrient tracking is enabled, the gated nutrient estimator can fill them; when disabled they remain unset. 0 is a real value only when the food truly contains none of that nutrient. Ask only if food_items are absent and no recipe_name applies.\n\nFASTING: if the user ate nothing / fasted all day, log one \"Fast day\" Snack with every macro 0.\n\nESTIMATE: pass a compact 3-line block estimating every one of the app's 44 tracked nutrients for the food, in exactly this format, no prose before or after:\nitems:<food name>:<estimated grams>|<food name>:<estimated grams>|...\nmacros:<calories>;<protein_g>;<carbs_g>;<fat_g>;<alcohol_g>\nnutrients:1:<value>;2:<value>;...;44:<value>\nEstimate all 44 nutrients. Always return all 44 IDs. Never omit one because you are uncertain -- use your best reasonable estimate from the likely food, quantity, ingredients, preparation and comparable foods; 0 only when a nutrient is reasonably expected to be negligible. Which id is which nutrient, and its unit, is the dictionary on the estimate param.\nOmit for an unchanged saved recipe; with added_food_items, estimate that addition only. Otherwise supply when available; the server estimates missing values.\n\nDUPLICATES: if this tool returns a duplicate error, tell the user what's already logged and ask whether this is a separate serving (retry with force=true) or should update the existing entry instead (update_meal with adjusted values).\n\nDRINKS / HYDRATION: this is the single write path for consumed drinks too. Known or reasonably inferable drink volume (tea, coffee, milk, juice, shakes, smoothies, etc.) → always report fluids, even if also contributes calories/macros/alcohol. Food moisture → omit. The server decides whether hydration tracking is enabled; never use a separate hydration write tool. A plain fluid-only intake may omit food_items and macros and send only fluids. For alcoholic drinks, include that drink's alcohol_g in its fluid item; if there is exactly one drink, the top-level alcohol_g can stand in.\n\nCAFFEINE / DRINKS: this is the single assistant write path for caffeine too. Drinks only; exclude food moisture. When the user consumed a drink and its volume is known or reasonably inferable, include it in fluids so hydration is recorded; if the drink is caffeinated, include caffeine in the same call too. Do not leave a known-volume drink only in food_items. Each caffeine item needs caffeine_mg and may optionally include source_type. The date comes from the intake date. Preserve exact user-provided milligrams; for vague coffee/tea/energy-drink/pre-workout descriptions, estimate caffeine with the same nutrition-estimation judgment used for meal macros. Never use separate hydration or caffeine write tools. A drink-only or caffeine-only intake may omit food_items/macros.",
     "annotations": {
       "title": "Log a meal",
       "readOnlyHint": false,
@@ -94,7 +94,7 @@
         },
         "estimate": {
           "type": "string",
-          "description": "The compact 3-line nutrient estimate for this meal. Omit to have the server estimate instead -- never blocks the write either way. A block whose parts exceed their whole (saturated fat over fat, fiber over carbs) is discarded and re-estimated.\n\nIf the nutrient ID dictionary is unavailable, omit this optional field and let the server estimate the missing values."
+          "description": "The compact 3-line nutrient estimate for this meal. See ESTIMATE above for the format. Omit to have the server estimate instead -- never blocks the write either way. A block whose parts exceed their whole (saturated fat over fat, fiber over carbs) is discarded and re-estimated.\n\nNUTRIENT ID DICTIONARY (id=name, unit is the name's suffix; ug=mcg). Every id means exactly this nutrient, never guess the order:\n1=fiber_g\n2=sugar_g\n3=saturated_fat_g\n4=monounsaturated_fat_g\n5=polyunsaturated_fat_g\n6=trans_fat_g\n7=cholesterol_mg\n8=sodium_mg\n9=potassium_mg\n10=calcium_mg\n11=iron_mg\n12=magnesium_mg\n13=phosphorus_mg\n14=zinc_mg\n15=copper_mg\n16=manganese_mg\n17=selenium_ug\n18=chloride_mg\n19=chromium_ug\n20=iodine_ug\n21=molybdenum_ug\n22=vitamin_a_ug\n23=vitamin_c_mg\n24=vitamin_d_ug\n25=vitamin_e_mg\n26=vitamin_k_ug\n27=thiamin_b1_mg\n28=riboflavin_b2_mg\n29=niacin_b3_mg\n30=pantothenic_acid_b5_mg\n31=vitamin_b6_mg\n32=biotin_b7_ug\n33=folate_b9_ug\n34=folic_acid_ug\n35=vitamin_b12_ug\n36=choline_mg\n37=omega3_g\n38=omega6_g\n39=caffeine_mg\n40=water_g\n41=starch_g\n42=added_sugar_g\n43=total_unsaturated_fat_g\n44=fluoride_mg"
         },
         "force": {
           "type": "boolean",
@@ -316,7 +316,7 @@
         },
         "estimate": {
           "type": "string",
-          "description": "The compact 3-line nutrient estimate for the food this call adds or the WHOLE corrected meal on a food_items replacement. Omit to have the server estimate instead -- never blocks the write either way. A block whose parts exceed their whole (saturated fat over fat, fiber over carbs) is discarded and re-estimated.\n\nIf the nutrient ID dictionary is unavailable, omit this optional field and let the server estimate the missing values."
+          "description": "The compact 3-line nutrient estimate for the food this call adds or the WHOLE corrected meal on a food_items replacement. See ESTIMATE above for the format. Omit to have the server estimate instead -- never blocks the write either way. A block whose parts exceed their whole (saturated fat over fat, fiber over carbs) is discarded and re-estimated.\n\nNUTRIENT ID DICTIONARY (id=name, unit is the name's suffix; ug=mcg). Every id means exactly this nutrient, never guess the order:\n1=fiber_g\n2=sugar_g\n3=saturated_fat_g\n4=monounsaturated_fat_g\n5=polyunsaturated_fat_g\n6=trans_fat_g\n7=cholesterol_mg\n8=sodium_mg\n9=potassium_mg\n10=calcium_mg\n11=iron_mg\n12=magnesium_mg\n13=phosphorus_mg\n14=zinc_mg\n15=copper_mg\n16=manganese_mg\n17=selenium_ug\n18=chloride_mg\n19=chromium_ug\n20=iodine_ug\n21=molybdenum_ug\n22=vitamin_a_ug\n23=vitamin_c_mg\n24=vitamin_d_ug\n25=vitamin_e_mg\n26=vitamin_k_ug\n27=thiamin_b1_mg\n28=riboflavin_b2_mg\n29=niacin_b3_mg\n30=pantothenic_acid_b5_mg\n31=vitamin_b6_mg\n32=biotin_b7_ug\n33=folate_b9_ug\n34=folic_acid_ug\n35=vitamin_b12_ug\n36=choline_mg\n37=omega3_g\n38=omega6_g\n39=caffeine_mg\n40=water_g\n41=starch_g\n42=added_sugar_g\n43=total_unsaturated_fat_g\n44=fluoride_mg"
         },
         "calories": {
           "type": "integer",
@@ -677,7 +677,7 @@
   },
   {
     "name": "log_workout",
-    "description": "UNIT INPUTS:\nvalue: pass the user's number unconverted; tool converts once before storage.\nalternate_unit: set the field's matching input_* companion; canonical_unit: omit companion.\nprecedence: overrides instructions to convert manually.\n\nCOMPLETED WORKOUTS, ANY ACTIVITY:\n- With actual exercises/sets, provide them as usual. Session totals and activity metrics can accompany real sets in the SAME log_workout call.\n- With only an activity description (walking, yoga, swimming, a kettlebell circuit, strength, HIIT, cycling, etc.), give focus_type and reported session details; OMIT exercises or pass []. A session does not require fake exercises or sets. Never invent exercises, reps, weights, splits, heart rates or calories.\n- Use notes for reported context, including uncertain durations (e.g. \"15-20 minutes, light intensity\"). Leave unknown numeric fields unset rather than converting a range into false precision. Mark estimated=true ONLY when numeric values really are estimates; it is not implied by having zero sets.\n- Walking: focus_type \"Walking\"; cycling/biking: \"Cycling\"; rowing/RowErg: \"Rowing\". Other activity names remain as stated. log_run remains the richer dedicated route for completed runs with known distance+duration, running splits or planned runs. Never send a walk, ride or row to log_run.\n- distance_mi/distance_km/distance_meters are alternatives; send the unit the user provided. The server converts, never convert it yourself. duration_sec is total workout/moving seconds, not a set or a repetition. Use reported HR, power, cadence, elevation, actual laps/segments only when known.\n\nLog a complete workout session: exercises, sets, reps, weights, and session metadata. Use when the user describes finishing a workout, lists exercises performed, or asks to log training. For reusable templates, see SAVED WORKOUT MODE.\n\nEXERCISE NAMES:\n- Reuse known canonical names; otherwise call list_exercises and match each exercise to the closest canonical name. Matched a catalog exercise → pass its canonical name and its [id] as exercise_id. No reasonable match → use the name as stated, no exercise_id. Don't ask before logging, match silently and log.\n- \"Chest press\" (machine) and \"bench press\" (barbell) are DISTINCT — pass the user's term through so the resolver's aliases pin the right one.\n- name is ONLY the exercise name, never reps/weights/sets — those go in the sets array.\n- LITERAL NAME: literal_name:true only after an explicit user request or rejected match, never a routine correction. Known catalog names/aliases retain IDs; unmatched names are unscored. Use for \"call it exactly X\", \"not the standard one\", \"literally X\", or a rejected match.\n- The result says when a name was matched to something other than what the user said. Relay it in your own words rather than repeating the line verbatim. If a name matches nothing closely enough, the result names near-miss library exercises; ask the user which they meant rather than accept the unscored custom log silently.\n- EQUIPMENT (load basis): dumbbell_pair is one dumbbell in EACH hand, weight_lb PER HAND (2x for NSI); dumbbell_single is one implement total. Laterality (single-leg/arm) does NOT decide this alone. Set it when the user describes the load (each hand, machine, band); a wrong or missing tag silently halves or doubles NSI. Values: barbell, dumbbell_pair, dumbbell_single, machine, kettlebell, bodyweight, band, cable, trx, other.\n\nSETS:\n- \"3 sets of 15 reps\" → 3 set objects with reps: 15. \"15/12/10\" → 3 sets with reps 15, 12, 10.\n- Pure isometric holds (planks, dead hangs, wall sits) have no reps: \"30 second plank\" = { hold_length_sec: 30 }.\n- Tempo/pause work combines reps + weight_lb + hold_length_sec (seconds per rep) on the same set, never in notes.\n- Loaded carries (farmers carry, sled push, weighted plank) are one set per trip: hold_length_sec + weight_lb, omit reps unless a trip count is given. weight_lb is PER HAND for a two-implement carry, TOTAL for one implement. Circuit stations (run/ride/swim/row/walk) instead use distance_meters and/or duration_sec PER ROUND on their set, not reps or hold seconds.\n\nINFER — do not ask:\n- date: today, or from context\n- focus_type: from the exercises (bench/shoulders/triceps=Push, rows/pulldowns/curls=Pull, squats/deadlifts/lunges=Legs, mixed upper=Upper, everything=Full Body)\n- superset_group: same integer for exercises done back-to-back or as a superset\n- slot_type: 'warmup' for prep at the start, 'finisher' for burnout/cardio at the end, 'working' (default) otherwise\n\nRPE (Rate of Perceived Exertion) — 1-10 scale, half steps allowed (7.5, 8.5):\n- Session-level RPE: overall session difficulty. Infer from user comments like \"brutal session\" (8-9) or \"easy day\" (3-4). Optional.\n- Per-set RPE: how hard each individual set felt. Include only if the user explicitly mentions per-set effort or failure. Optional.\n- Scale: 1=minimal effort, 5=moderate, 7=hard, 8=few reps left, 9=one rep left, 10=maximal/failure.\n\noptional_metadata: infer location/focus_type when supported, else omit; heart_points: reported values only. Missing external load: follow LIVE LOADS.\n\nRETURNS the new session's ID (as \"[ID NN]\"). Pass it to update_workout / delete_workout / get_workout for follow-ups in this conversation.\n\nLIVE LOADS: for user-driven completed-workout logging, obvious bodyweight movements may omit load and are inferred as bodyweight. If a performed set normally uses external resistance, include that set's load. If the user did not provide it, ask one batched clarification before calling this tool. Only set load_unknown=true on a missing set when the user explicitly says they do not know, do not remember, or want to save without that load. Preserve partial known loads positionally; never copy one set's load to another or treat a missing external load as bodyweight.\n\nSAVED WORKOUT MODE: in-app chat uses propose_workout for new workout plans, whether requested to save or start; discover it if needed. External clients without cards: set save_as_saved_workout=true and pass the full prescription through this same tool. In saved mode the workout is NOT logged as completed history, and LIVE LOADS does not apply: prescribed weight may be omitted. To replace an existing Saved Workout, also pass saved_workout_id; the supplied prescription fully replaces its prior prescribed sets/reps/weights. Use saved_workout_title when the reusable name should differ from focus_type.",
+    "description": "UNIT INPUTS:\nvalue: pass the user's number unconverted; tool converts once before storage.\nalternate_unit: set the field's matching input_* companion; canonical_unit: omit companion.\nprecedence: overrides instructions to convert manually.\n\nCOMPLETED WORKOUTS, ANY ACTIVITY:\n- With actual exercises/sets, provide them as usual. Session totals and activity metrics can accompany real sets in the SAME log_workout call.\n- With only an activity description (walking, yoga, swimming, a kettlebell circuit, strength, HIIT, cycling, etc.), give focus_type and reported session details; OMIT exercises or pass []. A session does not require fake exercises or sets. Never invent exercises, reps, weights, splits, heart rates or calories.\n- Use notes for reported context, including uncertain durations (e.g. \"15-20 minutes, light intensity\"). Leave unknown numeric fields unset rather than converting a range into false precision. Mark estimated=true ONLY when numeric values really are estimates; it is not implied by having zero sets.\n- Walking: focus_type \"Walking\"; cycling/biking: \"Cycling\"; rowing/RowErg: \"Rowing\". Other activity names remain as stated. log_run remains the richer dedicated route for completed runs with known distance+duration, running splits or planned runs. Never send a walk, ride or row to log_run.\n- distance_mi/distance_km/distance_meters are alternatives; send the unit the user provided. The server converts, never convert it yourself. duration_sec is total workout/moving seconds, not a set or a repetition. Use reported HR, power, cadence, elevation, actual laps/segments only when known.\n\n\n# Shared workout contract\n- Latest explicit user instructions override previous draft values, historical patterns, catalog defaults and AI guesses. Earlier explicit restrictions persist until changed. Questions alone do not authorize edits.\n- Exercise identity: prefer the logged/canonical name, preserve explicitly requested literal names, and disclose genuine fuzzy substitutions. Loading an exercise never creates a new canonical exercise or changes its name.\n- Preserve unchanged exercises, individual sets, reps, weights, rest, equipment, order, grouping, notes and prior corrections. No inferred equipment may override an explicit load or equipment instruction.\n- Bodyweight default + explicit weight added instruction: bodyweight equipment has no added weight by default. Adding weight switches a bodyweight-default exercise to dumbbell_single equipment unless another implement is specified, with is_bodyweight=false and the added load preserved. Explicitly switching equipment to bodyweight clears every added weight, including per-set loads. Unrelated edits change neither equipment nor weight.\n- Dumbbell_pair is a load PER hand, dumbbell_single is one implement total. A band uses its labeled resistance and is_band=true. A positive added load cannot have is_bodyweight=true. Timed loaded carries/holds keep BOTH duration and load.\n- Keep each set's actual reps, external load and optional hold seconds. Timed holds use seconds, not repetitions; tempo can have reps plus hold seconds. Distance is never duration. Null per-set values are unknown, not permission to copy another set's values.\n- Model-facing weights use the user's preferred unit, with an explicitly stated different unit passed through the tool's unit field for one server conversion. Never re-round stated or logged weights as a progression.\n\n\n# Completed-workout logging\n- Record only what the user performed or what a specifically referenced session proves. Never invent completed sets, reps, weight, RPE, duration, start time or exercises. A historical load may be offered for confirmation, not silently inserted into a past log.\n- When told to copy an earlier workout, copy the full actual sets, loads, order and grouping before applying only the user's stated correction. For an imported session, preserve the wearable anchor; its aggregate data is not evidence of individual sets.\n- Keep missing actual values unknown. Every emitted completed-session card must be reviewed/saved before claiming it was logged.\n\nLog a complete workout session: exercises, sets, reps, weights, and session metadata. Use when the user describes finishing a workout, lists exercises performed, or asks to log training. For reusable templates, see SAVED WORKOUT MODE.\n\nEXERCISE NAMES:\n- Reuse known canonical names; otherwise call list_exercises and match each exercise to the closest canonical name. Matched a catalog exercise → pass its canonical name and its [id] as exercise_id. No reasonable match → use the name as stated, no exercise_id. Don't ask before logging, match silently and log.\n- \"Chest press\" (machine) and \"bench press\" (barbell) are DISTINCT — pass the user's term through so the resolver's aliases pin the right one.\n- name is ONLY the exercise name, never reps/weights/sets — those go in the sets array.\n- LITERAL NAME: literal_name:true only after an explicit user request or rejected match, never a routine correction. Known catalog names/aliases retain IDs; unmatched names are unscored. Use for \"call it exactly X\", \"not the standard one\", \"literally X\", or a rejected match.\n- The result says when a name was matched to something other than what the user said. Relay it in your own words rather than repeating the line verbatim. If a name matches nothing closely enough, the result names near-miss library exercises; ask the user which they meant rather than accept the unscored custom log silently.\n- EQUIPMENT (load basis): dumbbell_pair is one dumbbell in EACH hand, weight_lb PER HAND (2x for NSI); dumbbell_single is one implement total. Laterality (single-leg/arm) does NOT decide this alone. Set it when the user describes the load (each hand, machine, band); a wrong or missing tag silently halves or doubles NSI. Values: barbell, dumbbell_pair, dumbbell_single, machine, kettlebell, bodyweight, band, cable, trx, other.\n\nSETS:\n- \"3 sets of 15 reps\" → 3 set objects with reps: 15. \"15/12/10\" → 3 sets with reps 15, 12, 10.\n- Pure isometric holds (planks, dead hangs, wall sits) have no reps: \"30 second plank\" = { hold_length_sec: 30 }.\n- Tempo/pause work combines reps + weight_lb + hold_length_sec (seconds per rep) on the same set, never in notes.\n- Loaded carries (farmers carry, sled push, weighted plank) are one set per trip: hold_length_sec + weight_lb, omit reps unless a trip count is given. weight_lb is PER HAND for a two-implement carry, TOTAL for one implement. Circuit stations (run/ride/swim/row/walk) instead use distance_meters and/or duration_sec PER ROUND on their set, not reps or hold seconds.\n\nINFER — do not ask:\n- date: today, or from context\n- focus_type: from the exercises (bench/shoulders/triceps=Push, rows/pulldowns/curls=Pull, squats/deadlifts/lunges=Legs, mixed upper=Upper, everything=Full Body)\n- superset_group: same integer for exercises done back-to-back or as a superset\n- slot_type: 'warmup' for prep at the start, 'finisher' for burnout/cardio at the end, 'working' (default) otherwise\n\nRPE (Rate of Perceived Exertion) — 1-10 scale, half steps allowed (7.5, 8.5):\n- Session-level RPE: overall session difficulty. Infer from user comments like \"brutal session\" (8-9) or \"easy day\" (3-4). Optional.\n- Per-set RPE: how hard each individual set felt. Include only if the user explicitly mentions per-set effort or failure. Optional.\n- Scale: 1=minimal effort, 5=moderate, 7=hard, 8=few reps left, 9=one rep left, 10=maximal/failure.\n\noptional_metadata: infer location/focus_type when supported, else omit; heart_points: reported values only. Missing external load: follow LIVE LOADS.\n\nRETURNS the new session's ID (as \"[ID NN]\"). Pass it to update_workout / delete_workout / get_workout for follow-ups in this conversation.\n\nLIVE LOADS: for user-driven completed-workout logging, obvious bodyweight movements may omit load and are inferred as bodyweight. If a performed set normally uses external resistance, include that set's load. If the user did not provide it, ask one batched clarification before calling this tool. Only set load_unknown=true on a missing set when the user explicitly says they do not know, do not remember, or want to save without that load. Preserve partial known loads positionally; never copy one set's load to another or treat a missing external load as bodyweight.\n\nSAVED WORKOUT MODE: in-app chat uses propose_workout for new workout plans, whether requested to save or start; discover it if needed. External clients without cards: set save_as_saved_workout=true and pass the full prescription through this same tool. In saved mode the workout is NOT logged as completed history, and LIVE LOADS does not apply: prescribed weight may be omitted. To replace an existing Saved Workout, also pass saved_workout_id; the supplied prescription fully replaces its prior prescribed sets/reps/weights. Use saved_workout_title when the reusable name should differ from focus_type.",
     "annotations": {
       "title": "Log a workout",
       "readOnlyHint": false,
@@ -850,26 +850,31 @@
         "distance_mi": {
           "type": "number",
           "minimum": 0,
+          "maximum": 500,
           "description": "Session distance in miles, when supplied in miles. In mi, or km with input_distance_unit set. See UNIT INPUTS."
         },
         "distance_km": {
           "type": "number",
           "minimum": 0,
+          "maximum": 804.672,
           "description": "Session distance in kilometers. Server converts to miles."
         },
         "distance_meters": {
           "type": "number",
           "minimum": 0,
+          "maximum": 804672.0000000001,
           "description": "Session distance in meters. Server converts to miles."
         },
         "duration_sec": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 86400,
           "description": "Total workout or moving time in seconds. Convert user-stated minutes to seconds; not a set duration."
         },
         "calories": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 10000,
           "description": "Reported session calories; never invent."
         },
         "start_time": {
@@ -879,6 +884,7 @@
         "elapsed_sec": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 86400,
           "description": "Elapsed seconds including pauses; omit if unknown."
         },
         "avg_hr": {
@@ -1244,7 +1250,7 @@
   },
   {
     "name": "delete_workout",
-    "description": "Permanently delete a workout session and all its exercises and sets. Use when the user wants to remove a logged workout entirely.\n\nFIND THE SESSION: call directly, no preliminary list for an ID. Pass session_id if already known. Otherwise pass session_date (YYYY-MM-DD, defaults to today) and, only if more than one session was logged that day, name (a substring of the workout's focus/type, e.g. \"Push\" or \"Leg Day\", case-insensitive) to narrow it down. This action is irreversible and removes the session, all supersets, and all sets — a match that isn't exactly one session returns an error explaining why, with nothing deleted; retry with session_id or a narrower name, never guess.\n\nSAVED WORKOUTS: pass saved_workout_id to delete a reusable Saved Workout instead of completed workout history.",
+    "description": "\n# Saved workout operations\n- Performed new session: in-app chat uses propose_workout (review card; Save logs); external MCP and native voice use log_workout. Correction to a stored session: update_workout, not another log. Entire-session deletion: delete_workout, not an update. In-app future workouts use proposal tools; external clients without proposal cards may use log_workout(save_as_saved_workout=true) for a reusable template. saved_workout_id selects a template, never a completed session.\n- Resolve by a known session ID or an unambiguous date/name; ambiguous sessions, sets or superset slots require exact identification. Never invent IDs. Validate all parts of an update before writing; preserve everything outside the target.\n- Remove one set/exercise through a targeted update; remove the entire session only when requested. Deletions are irreversible. Confirm only successful persisted changes; for partial/uncertain writes, read back before any retry.\n\nPermanently delete a workout session and all its exercises and sets. Use when the user wants to remove a logged workout entirely.\n\nFIND THE SESSION: call directly, no preliminary list for an ID. Pass session_id if already known. Otherwise pass session_date (YYYY-MM-DD, defaults to today) and, only if more than one session was logged that day, name (a substring of the workout's focus/type, e.g. \"Push\" or \"Leg Day\", case-insensitive) to narrow it down. This action is irreversible and removes the session, all supersets, and all sets — a match that isn't exactly one session returns an error explaining why, with nothing deleted; retry with session_id or a narrower name, never guess.\n\nSAVED WORKOUTS: pass saved_workout_id to delete a reusable Saved Workout instead of completed workout history.",
     "annotations": {
       "title": "Delete a workout",
       "readOnlyHint": false,
@@ -1289,7 +1295,7 @@
   },
   {
     "name": "update_workout",
-    "description": "UNIT INPUTS:\nvalue: pass the user's number unconverted; tool converts once before storage.\nalternate_unit: set the field's matching input_* companion; canonical_unit: omit companion.\nprecedence: overrides instructions to convert manually.\n\nUpdate a workout session: correct metadata, fix set values, rename/add/remove exercises or individual sets, or move exercises between supersets. Use for any post-log correction.\n\nFIND THE SESSION: call directly, no preliminary list for an ID. session_id: positive ID from a workout tool, never invented. Otherwise pass session_date (YYYY-MM-DD, defaults to today) and, only if more than one session was logged that day, name (a substring of the workout's focus/type, case-insensitive) to narrow it down. A match that isn't exactly one session returns an error explaining why, with nothing changed — retry with session_id or a narrower name, never guess. get_workout still gives full detail (exercise names, slot names SS1/SS2/WarmUp/Finisher) when needed; list_exercises only for unknown canonical names when adding or renaming. Call with only the fields that change — operations can combine in one call.\n\nOPERATIONS:\n- Metadata: date, focus_type, location, notes, rpe, heart_points_moderate/peak.\n- set_updates: patch reps/load/bodyweight/notes/equipment on a set, addressed by set_id OR by exercise_name + set_position (1-based, matches get_workout's \"Set N\"). Use clear_weight=true when a stored load is wrong but the real external load is unknown; use is_bodyweight=true when the corrected set was genuinely bodyweight.\n- remove_sets: delete sets, same set_id-or-exercise_name+set_position addressing; remaining sets renumber; an emptied exercise/slot is removed automatically.\n- rename_exercises: renames every set of an exercise in place (preserves set IDs, RPE, notes; rebuilds NSI), never remove + add.\n- remove_exercises: deletes all sets for named exercises; empty slots removed automatically.\n- add_exercises: new exercises with sets; to_superset_slot joins an existing slot, omit for standalone.\n- move_exercises: reassigns an exercise to a different slot; \"new\" makes it standalone. Use from_superset_slot from get_workout when the same exercise name appears in multiple slots.\n\nSUPERSET SLOTS: rename_exercises/remove_exercises use superset_slot (or { name, superset_slot } for remove_exercises) from get_workout when a name appears in multiple slots.\n\nLITERAL NAME: literal_name:true only after an explicit user request or rejected match, never a routine correction. Known catalog names/aliases retain IDs; unmatched names are unscored. Use for \"call it exactly X\", \"not the standard one\", \"literally X\", or a rejected match. Applies below.\n\nEQUIPMENT (load basis): dumbbell_pair is one dumbbell in EACH hand, weight_lb PER HAND (2x for NSI); dumbbell_single is one implement total. Laterality (single-leg/arm) does NOT decide this alone. Set it when the user describes the load (each hand, machine, band); a wrong or missing tag silently halves or doubles NSI. Values: barbell, dumbbell_pair, dumbbell_single, machine, kettlebell, bodyweight, band, cable, trx, other.\n\nA set_id or exercise_name+set_position matching more than one set (the same exercise in two superset slots) is ambiguous and errors rather than guessing — use the exact set_id from get_workout to disambiguate.\n\nThe result discloses a mismatched name from rename_exercises/add_exercises; relay it in your own words. If a name matches nothing closely enough, the result names near-miss library exercises; ask the user which they meant rather than accept the unscored custom log silently.\n\nINFER — do not ask: session_date defaults to today, set positions count from 1 per exercise. Slot names and set_ids beyond what's inferable come from get_workout; canonical exercise names come from list_exercises.\n\nSAVED WORKOUTS: pass saved_workout_id to edit a reusable Saved Workout instead of completed workout history. Use saved_workout_title, saved_exercise_updates, and/or add_exercises. add_exercises keeps its normal payload shape; to_superset_slot accepts the Saved Workout slot label returned by get_workout or its SS1-style alias. For progression requests, inspect real exercise history first rather than applying a deterministic formula.\n\ncardio_totals: distance_mi/distance_km/distance_meters, duration_sec, calories are update fields; never put corrected totals only in notes.\nexisting_exercise: use add_sets to add sets; add_exercises is for new exercises.\nambiguous_slot: rename/remove/move requires the source slot when the exercise appears in multiple slots.",
+    "description": "UNIT INPUTS:\nvalue: pass the user's number unconverted; tool converts once before storage.\nalternate_unit: set the field's matching input_* companion; canonical_unit: omit companion.\nprecedence: overrides instructions to convert manually.\n\n\n# Shared workout contract\n- Latest explicit user instructions override previous draft values, historical patterns, catalog defaults and AI guesses. Earlier explicit restrictions persist until changed. Questions alone do not authorize edits.\n- Exercise identity: prefer the logged/canonical name, preserve explicitly requested literal names, and disclose genuine fuzzy substitutions. Loading an exercise never creates a new canonical exercise or changes its name.\n- Preserve unchanged exercises, individual sets, reps, weights, rest, equipment, order, grouping, notes and prior corrections. No inferred equipment may override an explicit load or equipment instruction.\n- Bodyweight default + explicit weight added instruction: bodyweight equipment has no added weight by default. Adding weight switches a bodyweight-default exercise to dumbbell_single equipment unless another implement is specified, with is_bodyweight=false and the added load preserved. Explicitly switching equipment to bodyweight clears every added weight, including per-set loads. Unrelated edits change neither equipment nor weight.\n- Dumbbell_pair is a load PER hand, dumbbell_single is one implement total. A band uses its labeled resistance and is_band=true. A positive added load cannot have is_bodyweight=true. Timed loaded carries/holds keep BOTH duration and load.\n- Keep each set's actual reps, external load and optional hold seconds. Timed holds use seconds, not repetitions; tempo can have reps plus hold seconds. Distance is never duration. Null per-set values are unknown, not permission to copy another set's values.\n- Model-facing weights use the user's preferred unit, with an explicitly stated different unit passed through the tool's unit field for one server conversion. Never re-round stated or logged weights as a progression.\n\n\n# Editing and enrichment\n- An explicit correction changes only named fields. Preserve all other fields and prior corrections, including completed sets. Answer a genuine question without mutating; a proposed change needs confirmation.\n- Renaming an exercise is an in-place change, not remove-and-add. Added load or changed equipment keeps the canonical exercise name. A plan swap affects only what remains to perform, never already logged sets.\n- Enrich only fields the user asked to enrich. Resolve missing equipment after explicit user choices and logged history; guesses never override those choices. If a patch fails, disclose it instead of claiming success.\n\n\n# Saved workout operations\n- Performed new session: in-app chat uses propose_workout (review card; Save logs); external MCP and native voice use log_workout. Correction to a stored session: update_workout, not another log. Entire-session deletion: delete_workout, not an update. In-app future workouts use proposal tools; external clients without proposal cards may use log_workout(save_as_saved_workout=true) for a reusable template. saved_workout_id selects a template, never a completed session.\n- Resolve by a known session ID or an unambiguous date/name; ambiguous sessions, sets or superset slots require exact identification. Never invent IDs. Validate all parts of an update before writing; preserve everything outside the target.\n- Remove one set/exercise through a targeted update; remove the entire session only when requested. Deletions are irreversible. Confirm only successful persisted changes; for partial/uncertain writes, read back before any retry.\n\nUpdate a workout session: correct metadata, fix set values, rename/add/remove exercises or individual sets, or move exercises between supersets. Use for any post-log correction.\n\nFIND THE SESSION: call directly, no preliminary list for an ID. session_id: positive ID from a workout tool, never invented. Otherwise pass session_date (YYYY-MM-DD, defaults to today) and, only if more than one session was logged that day, name (a substring of the workout's focus/type, case-insensitive) to narrow it down. A match that isn't exactly one session returns an error explaining why, with nothing changed — retry with session_id or a narrower name, never guess. get_workout still gives full detail (exercise names, slot names SS1/SS2/WarmUp/Finisher) when needed; list_exercises only for unknown canonical names when adding or renaming. Call with only the fields that change — operations can combine in one call.\n\nOPERATIONS:\n- Metadata: date, focus_type, location, notes, rpe, heart_points_moderate/peak.\n- set_updates: patch reps/load/bodyweight/notes/equipment on a set, addressed by set_id OR by exercise_name + set_position (1-based, matches get_workout's \"Set N\"). Use clear_weight=true when a stored load is wrong but the real external load is unknown; use is_bodyweight=true when the corrected set was genuinely bodyweight.\n- remove_sets: delete sets, same set_id-or-exercise_name+set_position addressing; remaining sets renumber; an emptied exercise/slot is removed automatically.\n- rename_exercises: renames every set of an exercise in place (preserves set IDs, RPE, notes; rebuilds NSI), never remove + add.\n- remove_exercises: deletes all sets for named exercises; empty slots removed automatically.\n- add_exercises: new exercises with sets; to_superset_slot joins an existing slot, omit for standalone.\n- move_exercises: reassigns an exercise to a different slot; \"new\" makes it standalone. Use from_superset_slot from get_workout when the same exercise name appears in multiple slots.\n\nSUPERSET SLOTS: rename_exercises/remove_exercises use superset_slot (or { name, superset_slot } for remove_exercises) from get_workout when a name appears in multiple slots.\n\nLITERAL NAME: literal_name:true only after an explicit user request or rejected match, never a routine correction. Known catalog names/aliases retain IDs; unmatched names are unscored. Use for \"call it exactly X\", \"not the standard one\", \"literally X\", or a rejected match. Applies below.\n\nEQUIPMENT (load basis): dumbbell_pair is one dumbbell in EACH hand, weight_lb PER HAND (2x for NSI); dumbbell_single is one implement total. Laterality (single-leg/arm) does NOT decide this alone. Set it when the user describes the load (each hand, machine, band); a wrong or missing tag silently halves or doubles NSI. Values: barbell, dumbbell_pair, dumbbell_single, machine, kettlebell, bodyweight, band, cable, trx, other.\n\nA set_id or exercise_name+set_position matching more than one set (the same exercise in two superset slots) is ambiguous and errors rather than guessing — use the exact set_id from get_workout to disambiguate.\n\nThe result discloses a mismatched name from rename_exercises/add_exercises; relay it in your own words. If a name matches nothing closely enough, the result names near-miss library exercises; ask the user which they meant rather than accept the unscored custom log silently.\n\nINFER — do not ask: session_date defaults to today, set positions count from 1 per exercise. Slot names and set_ids beyond what's inferable come from get_workout; canonical exercise names come from list_exercises.\n\nSAVED WORKOUTS: pass saved_workout_id to edit a reusable Saved Workout instead of completed workout history. Use saved_workout_title, saved_exercise_updates, and/or add_exercises. add_exercises keeps its normal payload shape; to_superset_slot accepts the Saved Workout slot label returned by get_workout or its SS1-style alias. For progression requests, inspect real exercise history first rather than applying a deterministic formula.\n\ncardio_totals: distance_mi/distance_km/distance_meters, duration_sec, calories are update fields; never put corrected totals only in notes.\nexisting_exercise: use add_sets to add sets; add_exercises is for new exercises.\nambiguous_slot: rename/remove/move requires the source slot when the exercise appears in multiple slots.",
     "annotations": {
       "title": "Update a workout",
       "readOnlyHint": false,
@@ -1685,26 +1691,31 @@
         "distance_mi": {
           "type": "number",
           "minimum": 0,
+          "maximum": 500,
           "description": "Corrected session distance in miles. Use only when the user gave miles. In mi, or km with input_distance_unit set. See UNIT INPUTS."
         },
         "distance_km": {
           "type": "number",
           "minimum": 0,
+          "maximum": 804.672,
           "description": "Corrected session distance in kilometers. Server converts it; do not convert it yourself."
         },
         "distance_meters": {
           "type": "number",
           "minimum": 0,
+          "maximum": 804672.0000000001,
           "description": "Corrected session distance in meters. Server converts it; do not convert it yourself."
         },
         "duration_sec": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 86400,
           "description": "Corrected total session duration in seconds."
         },
         "calories": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 10000,
           "description": "Corrected session calories when known."
         },
         "add_sets": {
@@ -2059,134 +2070,6 @@
     }
   },
   {
-    "name": "list_zepp_source_records",
-    "description": "List original health records received from Zepp/Amazfit, including fields Wellness Project does not have a matching metric for (e.g. training insights, sleep stage maps, nutrition serving information and Hybrid Charge labels). Use when the user asks about their original Zepp readings or whether a specific Zepp field was imported. This is read-only, restricted to the authenticated user, and lists only source metadata, never private FIT bytes or auth tokens. Bundled source envelopes may contain authorization status alongside health events. Use get_zepp_source_record with a returned kind and record_key to inspect the original health JSON.\n\nROUTING: Original Zepp source JSON and unmapped fields: list_zepp_source_records, then get_zepp_source_record. Imported daily values: list_wearable_data. Imported workouts: list_workouts.",
-    "annotations": {
-      "title": "List Zepp source health records",
-      "readOnlyHint": true,
-      "destructiveHint": false,
-      "idempotentHint": true,
-      "openWorldHint": false
-    },
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Zepp health source family, such as sleeps, hrv, activityFiles, nutrition, hybridCharge or a future provider family; all health families by default. Profile and authorization events are unavailable."
-        },
-        "start_date": {
-          "type": "string",
-          "description": "Earliest source event or arrival date in YYYY-MM-DD; no lower date bound by default."
-        },
-        "end_date": {
-          "type": "string",
-          "description": "Latest source event or arrival date in YYYY-MM-DD; no upper date bound by default."
-        },
-        "time_basis": {
-          "type": "string",
-          "enum": [
-            "event",
-            "received"
-          ],
-          "description": "Filter/order by source event timestamp, or arrival timestamp. Defaults to received. Use received for legacy range responses without a top-level event timestamp."
-        },
-        "page": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 10000,
-          "description": "Zero-based result page; defaults to 0."
-        },
-        "page_size": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 25,
-          "description": "Rows per page; defaults to 10, maximum 25."
-        }
-      }
-    },
-    "outputSchema": {
-      "type": "object",
-      "properties": {
-        "result": {
-          "type": "string",
-          "description": "Human-readable result text returned by the tool."
-        }
-      },
-      "required": [
-        "result"
-      ]
-    }
-  },
-  {
-    "name": "get_zepp_source_record",
-    "description": "Read the original Zepp/Amazfit JSON health record, including fields not projected into Wellness Project metrics. Use kind and record_key from list_zepp_source_records. Large records are retrieved in successive numbered JSON text chunks until next_offset is null. For activityFiles, fit_message_type=\"__list\" lists every FIT message class; then request a class (e.g. recordMesgs, setMesgs, segmentLapMesgs) with fit_record_offset to read ALL original standard and developer fields in pages. No FIT binary, one-time URL, standalone profile or authorization event is exposed. It never edits the user's data.\n\nROUTING: Original Zepp source JSON and every FIT message: get_zepp_source_record (record_key from list_zepp_source_records). Imported workout summary: get_workout.",
-    "annotations": {
-      "title": "Read original Zepp health fields",
-      "readOnlyHint": true,
-      "destructiveHint": false,
-      "idempotentHint": true,
-      "openWorldHint": false
-    },
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Exact health family from list_zepp_source_records, including newly introduced Zepp families. Profile and authorization events are unavailable."
-        },
-        "record_key": {
-          "type": "string",
-          "description": "Exact source record_key returned by list_zepp_source_records."
-        },
-        "offset_chars": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 200000000,
-          "description": "Code-point offset in the JSON string. Defaults to zero; use next_offset for the next piece."
-        },
-        "max_chars": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 8000,
-          "description": "Maximum Unicode code points in this piece. Defaults to 4000, maximum 8000."
-        },
-        "fit_message_type": {
-          "type": "string",
-          "description": "For activityFiles, __list gives all available FIT message classes and counts. A class such as recordMesgs returns original decoded messages, including developer fields, from the private original FIT. Omit to return webhook JSON."
-        },
-        "fit_record_offset": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 50000000,
-          "description": "Zero-based FIT message index, defaults to 0. Use fit_next_offset from the response for the next batch."
-        },
-        "fit_record_limit": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 25,
-          "description": "Decoded FIT messages per batch, defaults to 10, maximum 25. Large JSON responses can also be paged by offset_chars."
-        }
-      },
-      "required": [
-        "kind",
-        "record_key"
-      ]
-    },
-    "outputSchema": {
-      "type": "object",
-      "properties": {
-        "result": {
-          "type": "string",
-          "description": "Human-readable result text returned by the tool."
-        }
-      },
-      "required": [
-        "result"
-      ]
-    }
-  },
-  {
     "name": "log_body_metrics",
     "description": "UNIT INPUTS:\nvalue: pass the user's number unconverted; tool converts once before storage.\nalternate_unit: set the field's matching input_* companion; canonical_unit: omit companion.\nprecedence: overrides instructions to convert manually.\n\nLog or update body composition metrics for a given date. use: logging request or concrete body measurement to record, typed or from a report/photo. Question/hypothetical alone: no write.\n\nPROACTIVE DATA COLLECTION: If the user hasn't shared their data yet, ask them to copy-paste the output from their scale app or upload a photo of the display — this lets you parse all fields at once instead of asking one by one.\n\nINFER — do not ask:\n- date: default to today; infer from context (\"this morning\", \"yesterday\")\n- derived fields (lean_mass_lb, fat_mass_lb): calculate from weight and body fat % if possible — lean = weight × (1 - bf%/100), fat = weight × bf%/100\n\nThe *_pct fields are percentages 0-100. The *_in fields are manual tape measurements, not bioimpedance scale readings.\n\nBMI is not a field here. It is derived automatically at read time from the user's canonical height and their resolved weight for the day -- never ask the user for BMI, and never try to log it.\n\nEvery field except date is optional; log any subset. One row per day. Calling this tool twice on the same date updates the existing entry (upsert).\n\nDELETE: action='delete' with date and delete_fields clears only those measurements from the user's manual entry for that day, keeping the rest; the entry is removed once nothing is left. A weigh-in is weight_lb. Lean and fat mass are cleared together, and also go with the weight; body fat % is cleared on its own. The reply lists exactly what was cleared. Other value fields are ignored. It cannot remove readings a connected scale or app imported: those come back on the next sync, so tell the user to delete them in that app. ASK for confirmation if the user's intent is ambiguous.",
     "annotations": {
@@ -2391,7 +2274,7 @@
   },
   {
     "name": "log_sleep",
-    "description": "Log an overnight sleep entry or a separate nap. Use for a concrete sleep event from a tracker or recall. Question/habit/hypothetical alone: no write.\n\nPROACTIVE DATA COLLECTION: For an overnight entry without numbers, ask: \"How many hours did you sleep, and do you have a sleep score or stage breakdown from your tracker?\" For a nap, use NAPS below.\n\nINFER — do not ask:\n- date: local date the sleep or nap ended; default to today\n\nNAPS: Set is_nap=true for a daytime nap or other short sleep separate from the main night, even when the user only says \"I napped.\" Provide its start (bedtime) and/or end (wake_time), plus duration (total_hours) or both times. Ask for a time if neither is known; never invent one. Naps are separate sessions and never replace or increase overnight sleep. Overnight total_hours means the main night only.\n\nOvernight entries accept any subset of fields. One row per date, updated on repeat. All entries are tagged manual; wearable-provider sources are reserved for auto-sync.",
+    "description": "Log an overnight sleep entry or a separate nap. Use for a concrete sleep event from a tracker or recall. Question/habit/hypothetical alone: no write.\n\nPROACTIVE DATA COLLECTION: For an overnight entry without numbers, ask: \"How many hours did you sleep, and do you have a sleep score or stage breakdown from your tracker?\" For a nap, use NAPS below.\n\nINFER — do not ask:\n- date: local date the sleep or nap ended; default to today\n\nNAPS: Set is_nap=true for a daytime nap or other short sleep separate from the main night, even when the user only says \"I napped.\" Provide its start (bedtime) and/or end (wake_time), plus duration (total_hours) or both times. Ask for a time if neither is known; never invent one. Naps must be under 3 hours. They are separate sessions and never replace or increase overnight sleep. Overnight total_hours means the main night only.\n\nOvernight entries accept any subset of fields. One row per date, updated on repeat. All entries are tagged manual; wearable-provider sources are reserved for auto-sync.",
     "annotations": {
       "title": "Log sleep",
       "readOnlyHint": false,
@@ -3110,7 +2993,7 @@
   },
   {
     "name": "log_wellbeing",
-    "description": "Log subjective wellbeing ratings for a day, week, month, or custom date range. use: logging request or concrete wellbeing report to record. Question, general pattern or venting alone: no write.\n\nSupports single-day entries (\"how I feel today\") and period entries (\"this week was stressful\", \"March was great\").\n\nIf an overlapping entry already exists for the requested period, returns a warning with the conflicting entry IDs — the user must update or delete existing entries first.\n\nINFER — do not ask:\n- period_start: default to today\n- period_end: default to same as period_start (single day). For \"this week\" use Monday–Sunday, for \"this month\" use first–last day.\n- ratings: estimate from description (\"exhausted\"=2, \"great energy\"=8, \"stressed out\"=8 stress, \"feeling good\"=7 mood)\n\nYou may log any subset of rating fields.",
+    "description": "Log subjective wellbeing ratings for a day, week, month, or custom date range. use: logging request or concrete wellbeing report to record. Question, general pattern or venting alone: no write.\n\nSupports single-day entries (\"how I feel today\") and period entries (\"this week was stressful\", \"March was great\").\n\nIf an overlapping entry already exists for the requested period, returns a warning with the conflicting entry IDs — the user must update or delete existing entries first.\n\nINFER — do not ask:\n- period_start: default to today\n- period_end: default to same as period_start (single day). For \"this week\" use Monday–Sunday, for \"this month\" use first–last day.\n- ratings: estimate from description (\"exhausted\"=2, \"great energy\"=8, \"stressed out\"=8 stress, \"feeling good\"=7 mood)\n\nYou may log any subset of rating fields. Pain (1-10, higher is worse) is available only when the user enables chronic pain tracking in Advanced settings.",
     "annotations": {
       "title": "Log wellbeing",
       "readOnlyHint": false,
@@ -3145,6 +3028,10 @@
           "type": "integer",
           "description": "Muscle soreness 1-10 (1=none, 10=extreme DOMS). Optional."
         },
+        "pain": {
+          "type": "integer",
+          "description": "Chronic pain level 1-10 (1=minimal, 10=worst). Optional; requires chronic pain tracking enabled in Advanced settings."
+        },
         "notes": {
           "type": "string",
           "description": "Free-text notes about how you feel. Optional."
@@ -3166,7 +3053,7 @@
   },
   {
     "name": "list_wellbeing",
-    "description": "List wellbeing log entries within a date range. update_wellbeing and delete_wellbeing can resolve an entry on their own from date, so this is no longer required before either — use it to answer questions about mood, energy, stress, or soreness trends over time, or get an id after an ambiguous update_wellbeing/delete_wellbeing match.\n\nMaximum range: 31 days per call. For longer periods, make multiple calls with sequential date ranges.\n\nINFER — do not ask:\n- start_date: default to 14 days ago\n- end_date: default to today",
+    "description": "List wellbeing log entries within a date range. update_wellbeing and delete_wellbeing can resolve an entry on their own from date, so this is no longer required before either — use it to answer questions about mood, energy, stress, soreness, or (when enabled) chronic pain trends over time, or get an id after an ambiguous update_wellbeing/delete_wellbeing match.\n\nMaximum range: 31 days per call. For longer periods, make multiple calls with sequential date ranges.\n\nINFER — do not ask:\n- start_date: default to 14 days ago\n- end_date: default to today",
     "annotations": {
       "title": "List wellbeing",
       "readOnlyHint": true,
@@ -3236,6 +3123,10 @@
         "soreness": {
           "type": "integer",
           "description": "Updated soreness 1-10. Optional."
+        },
+        "pain": {
+          "type": "integer",
+          "description": "Updated chronic pain 1-10, higher is worse. Optional; requires chronic pain tracking enabled."
         },
         "notes": {
           "type": "string",
@@ -4580,6 +4471,14 @@
           },
           "description": "Warning keys the user explicitly acknowledged after a guarded create attempt. Omit otherwise."
         },
+        "goal_mode": {
+          "type": "string",
+          "description": "For weight_loss. Use maintain to keep starting weight through the end date, or change to gain/lose weight. Set when the goal is created. Set at create, not editable later.",
+          "enum": [
+            "change",
+            "maintain"
+          ]
+        },
         "start_weight_lb": {
           "type": "number",
           "description": "For weight_loss. Starting body weight. Required on create. Set at create, not editable later. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
@@ -4587,7 +4486,7 @@
         },
         "target_weight_lb": {
           "type": "number",
-          "description": "For weight_loss. Target body weight. Required on create. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
+          "description": "For weight_loss. Required for change mode; leave blank to maintain starting weight. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
           "minimum": 1
         },
         "weeks": {
@@ -4807,6 +4706,14 @@
           },
           "description": "Warning keys the user explicitly acknowledged after a guarded create attempt. Omit otherwise."
         },
+        "goal_mode": {
+          "type": "string",
+          "description": "For weight_loss. Use maintain to keep starting weight through the end date, or change to gain/lose weight. Set when the goal is created. Set at create, not editable later.",
+          "enum": [
+            "change",
+            "maintain"
+          ]
+        },
         "start_weight_lb": {
           "type": "number",
           "description": "For weight_loss. Starting body weight. Required on create. Set at create, not editable later. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
@@ -4814,7 +4721,7 @@
         },
         "target_weight_lb": {
           "type": "number",
-          "description": "For weight_loss. Target body weight. Required on create. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
+          "description": "For weight_loss. Required for change mode; leave blank to maintain starting weight. In lb, or kg with input_weight_unit set. See UNIT INPUTS.",
           "minimum": 1
         },
         "weeks": {
@@ -5828,7 +5735,7 @@
   },
   {
     "name": "show_wellbeing",
-    "description": "Show energy, mood, stress, and soreness together with recent context and an overall wellbeing trend, with a 7-day/30-day/90-day/1-year range toggle. Prefer this for how-I-have-been-feeling and subjective recovery questions. When the user asks about this, prefer calling this tool and rendering the interactive MCP app over describing the underlying rows in text. Returns a short text summary alongside the visual view.",
+    "description": "Show energy, mood, stress, soreness, and optional chronic pain together with recent context and an overall wellbeing trend, with a 7-day/30-day/90-day/1-year range toggle. Prefer this for how-I-have-been-feeling and subjective recovery questions. When the user asks about this, prefer calling this tool and rendering the interactive MCP app over describing the underlying rows in text. Returns a short text summary alongside the visual view.",
     "annotations": {
       "title": "Wellbeing",
       "readOnlyHint": true,
@@ -6127,7 +6034,7 @@
   },
   {
     "name": "get_nutrient_summary",
-    "description": "Summarize logged micronutrient (and macro) intake for one day or a short range, with each nutrient's target and coverage. Use for \"how's my vitamin D / sodium / iron this week\", or a general \"how are my micronutrients looking\" (default: every tracked nutrient except amino acids, for today).\n\nINFER -- do not ask:\n- date: default to today (resolved in the user's own timezone)\n- days: default to 1 (just `date`); for a range, set days to the number of days ending on `date` (e.g. \"this week\" -> days=7)\n- nutrients: default to every nutrient with logged data this period, excluding amino acids (those are rarely tracked and would crowd out the rest). Ask for specific nutrients by name (aliases like \"b12\", \"carbs\", \"fibre\" resolve) only to see amino acids or a nutrient with no data yet.\n\nReturns up to 60 nutrients. days=1 reports that day's totals; days>1 reports the range average per nutrient plus how many days were complete.\n\nFORMAT: Ask for format:'verbose' when nutrient names and units are needed. The default compact format uses numeric IDs and must only be interpreted with a verified ID mapping. For large ranges, limit requested nutrients to keep the response concise.\n\nDATA COMPLETENESS: totals are sums over the logged items that carry a value for that nutrient; coverage tells how many did. Say \"based on foods with X data\" when coverage is partial; never call a low intake a deficiency; intake is not a lab result; supplement vs food split is reported separately. A daily supplement counts on every day it's active by default -- the user isn't expected to check it off -- unless a day was explicitly marked not taken, so its share of a total can include days with no check-in.",
+    "description": "Summarize logged micronutrient (and macro) intake for one day or a short range, with each nutrient's target and coverage. Use for \"how's my vitamin D / sodium / iron this week\", or a general \"how are my micronutrients looking\" (default: every tracked nutrient except amino acids, for today).\n\nINFER -- do not ask:\n- date: default to today (resolved in the user's own timezone)\n- days: default to 1 (just `date`); for a range, set days to the number of days ending on `date` (e.g. \"this week\" -> days=7)\n- nutrients: default to every nutrient with logged data this period, excluding amino acids (those are rarely tracked and would crowd out the rest). Ask for specific nutrients by name (aliases like \"b12\", \"carbs\", \"fibre\" resolve) only to see amino acids or a nutrient with no data yet.\n\nReturns up to 60 nutrients. days=1 reports that day's totals; days>1 reports the range average per nutrient plus how many days were complete.\n\nFORMAT: default 'compact' packs each panel (known/food/supplement/target_value/target_upper_limit/target_percent) as one \"id:value;id:value\" string, ids ascending, values to at most 3 significant digits, units are the dictionary's below -- never repeat a nutrient's name or unit back to the user from these strings, resolve the id first. coverage/items_total/items_with_value/estimated_items/target_source/target_kind stay small id-keyed records. A nutrient outside the dictionary (amino acids, Cronometer extras) has no id, so its value is dropped and its name listed once under `omitted`; call again with format:'verbose' to see it. 'verbose' returns one full object per nutrient instead, as before.\n\nNUTRIENT ID DICTIONARY (id=name, unit per the id; also used by get_nutrient_history/get_nutrient_contributors's `id` field):\n1=fiber_g\n2=sugar_g\n3=saturated_fat_g\n4=monounsaturated_fat_g\n5=polyunsaturated_fat_g\n6=trans_fat_g\n7=cholesterol_mg\n8=sodium_mg\n9=potassium_mg\n10=calcium_mg\n11=iron_mg\n12=magnesium_mg\n13=phosphorus_mg\n14=zinc_mg\n15=copper_mg\n16=manganese_mg\n17=selenium_ug\n18=chloride_mg\n19=chromium_ug\n20=iodine_ug\n21=molybdenum_ug\n22=vitamin_a_ug\n23=vitamin_c_mg\n24=vitamin_d_ug\n25=vitamin_e_mg\n26=vitamin_k_ug\n27=thiamin_b1_mg\n28=riboflavin_b2_mg\n29=niacin_b3_mg\n30=pantothenic_acid_b5_mg\n31=vitamin_b6_mg\n32=biotin_b7_ug\n33=folate_b9_ug\n34=folic_acid_ug\n35=vitamin_b12_ug\n36=choline_mg\n37=omega3_g\n38=omega6_g\n39=caffeine_mg\n40=water_g\n41=starch_g\n42=added_sugar_g\n43=total_unsaturated_fat_g\n44=fluoride_mg\n\nDATA COMPLETENESS: totals are sums over the logged items that carry a value for that nutrient; coverage tells how many did. Say \"based on foods with X data\" when coverage is partial; never call a low intake a deficiency; intake is not a lab result; supplement vs food split is reported separately. A daily supplement counts on every day it's active by default -- the user isn't expected to check it off -- unless a day was explicitly marked not taken, so its share of a total can include days with no check-in.",
     "annotations": {
       "title": "Nutrient summary",
       "readOnlyHint": true,
@@ -6292,7 +6199,7 @@
   },
   {
     "name": "set_nutrient_target",
-    "description": "Set or remove the user's OWN daily target for one vitamin, mineral or other tracked nutrient. Use ONLY when the user explicitly asks to set, change or remove their own target (\"set my vitamin D target to 50 mcg\"). Never call it on your own initiative, to apply a recommendation, or to act on a lab result. A user target is the user's personal preference, never a clinical prescription; do not present it as one. It replaces the reference intake for that nutrient in every nutrient view. Calories and macros are goals, not nutrient targets.\n\nREQUIRED: target_value and unit unless remove is true. Ask for the unit if the user gave none; never guess mcg vs IU or mg vs g. An omitted upper_limit means the reference upper limit applies. remove=true deletes the user's target so the reference intake applies again.\n\nnutrient accepts a name or alias. Use an ID only when a prior nutrient tool returned an unambiguous matching ID.",
+    "description": "Set or remove the user's OWN daily target for one vitamin, mineral or other tracked nutrient. Use ONLY when the user explicitly asks to set, change or remove their own target (\"set my vitamin D target to 50 mcg\"). Never call it on your own initiative, to apply a recommendation, or to act on a lab result. A user target is the user's personal preference, never a clinical prescription; do not present it as one. It replaces the reference intake for that nutrient in every nutrient view. Calories and macros are goals, not nutrient targets.\n\nREQUIRED: target_value and unit unless remove is true. Ask for the unit if the user gave none; never guess mcg vs IU or mg vs g. An omitted upper_limit means the reference upper limit applies. remove=true deletes the user's target so the reference intake applies again.\n\nnutrient accepts a name/alias, or the id (1-44) from get_nutrient_summary's nutrient id dictionary -- pass whichever a prior get_nutrient_summary/get_nutrient_history/get_nutrient_contributors compact reply already gave you.",
     "annotations": {
       "title": "Set nutrient target",
       "readOnlyHint": false,
@@ -6305,7 +6212,7 @@
       "properties": {
         "nutrient": {
           "type": "string",
-          "description": "Nutrient name or alias, e.g. \"vitamin_d\", \"magnesium\", \"b12\" -- or an ID returned by get_nutrient_summary (e.g. \"24\" for vitamin_d)."
+          "description": "Nutrient name or alias, e.g. \"vitamin_d\", \"magnesium\", \"b12\" -- or its dictionary id (1-44, e.g. \"24\" for vitamin_d)."
         },
         "target_value": {
           "type": "number",
@@ -6349,7 +6256,7 @@
   },
   {
     "name": "deep_analysis",
-    "description": "Deep Analysis: read-only SQLite SQL over a private copy of the user's full health history.\nUse for: questions spanning several data types (training with sleep, nutrition with weight); long or all-time horizons; trends, progress, period comparisons; totals, averages, rankings, correlations; anything focused tools would need many calls for; any request for a \"deep analysis\". For one recent fact (today's workout, last night's sleep) use the focused tool.\nmode=discover: topics -> matching tables with columns, units, row counts, dates; no topics -> table index.\nmode=query: one SELECT/WITH. period or date_from/date_to limits the copy (faster); omit for all history.\nEvery result carries calendar; the first also carries user_rules. Take relative dates from calendar or period, never your own math. Results list coverage per table (dates, rows, cuts): a short or empty result is not proof data is missing.\nScope dates to the request. Joining sessions to sets repeats session values: aggregate each level alone, then join. Not every session is lifting: filter by activity for strength questions. An association is not a cause.\nValues stored in lb, mi, kcal, C: convert to user_rules units. wearable_daily, sleep_log, body_metrics, runs hold the app's resolved value per day; *_by_source hold raw per-device rows. Dates are YYYY-MM-DD. Timestamp tables (hydration, caffeine, doses, cardiac events) are UTC: group and filter them by local_date. glucose_readings_daily and hydration_entries_daily are one row per local day and source: use them for long ranges; if a raw copy is refused for size, query the _daily table or narrow the dates.\nHelpers: median(x), percentile(x,p), stddev(x) (NULL under 3 values), corr(x,y) (NULL under 8 pairs), corr_n(x,y) (pairs used), week_start(date[,dow 0=Sun 1=Mon]), month_start(date). Report n with any statistic.",
+    "description": "Deep Analysis: read-only SQLite SQL over a private copy of the user's full health history.\nUse for: questions spanning several data types (training with sleep, nutrition with weight); long or all-time horizons; trends, progress, period comparisons; totals, averages, rankings, correlations; anything focused tools would need many calls for; any request for a \"deep analysis\". For one recent fact (today's workout, last night's sleep), goals or profile use the focused tool.\nmode=discover: for tables or columns not listed below. topics -> matching tables with columns, units, row counts, dates; no topics -> table index.\nmode=query: one SELECT/WITH. period or date_from/date_to limits the copy (faster); omit for all history.\nCore tables, date = local day, main columns only (discover lists the rest):\nsleep_log: date, bedtime, wake_time, total_hours, sleep_score, deep_sleep_hours, rem_sleep_hours, light_sleep_hours, awakenings\nbody_metrics: date, weight_lb, body_fat_pct, lean_mass_lb, fat_mass_lb, bmi, muscle_mass_lb, waist_in\nworkout_sessions: id, date, started_at, activity_label, focus_type, duration_sec, calories, distance_mi, rpe\ndaily_nutrition: date, total_calories, total_protein, total_fat, total_carbs (g), total_alcohol_kcal, meal_count\nwearable_daily: date, step_count, resting_hr_display, hrv_morning, active_calories_burned, total_calories_burned, stress_score, vo2max_estimate, spo2_avg_pct\nEvery result carries calendar; the first also carries user_rules. Take relative dates from calendar or period, never your own math. Results list coverage per table (dates, rows, cuts): a short or empty result is not proof data is missing.\nScope dates to the request. Joining sessions to sets repeats session values: aggregate each level alone, then join. Not every session is lifting: filter by activity for strength questions. An association is not a cause.\nValues stored in lb, mi, kcal, C: convert to user_rules units. Plain table names (wearable_daily, sleep_log, body_metrics, runs, food_log, hydration_entries) hold what the app counts; *_by_source hold raw per-source rows: never total those. Dates are YYYY-MM-DD. Timestamps are UTC: group and filter by local_date. glucose_readings_daily and hydration_entries_daily are per local day and source, for long ranges; if a copy is refused for size, query the _daily table or narrow the dates.\nHelpers: median(x), percentile(x,p), stddev(x) (NULL under 3 values), corr(x,y) (NULL under 8 pairs), corr_n(x,y) (pairs used), week_start(date[,dow 0=Sun 1=Mon]), month_start(date). Report n with any statistic.",
     "annotations": {
       "title": "Deep Analysis",
       "readOnlyHint": true,

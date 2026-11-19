@@ -16,7 +16,7 @@ This repository is the public documentation and catalog for the hosted server. I
 
 - App: https://wellnessproject.ai
 - MCP endpoint: `https://wellnessproject.ai/api/mcp`
-- **87 advertised public tools** generated from the production tool registry
+- **85 advertised public tools** generated from the production tool registry
 - **15 active interactive widgets** for compatible MCP Apps UI clients
 - OAuth 2.1 authentication with Dynamic Client Registration
 
@@ -181,7 +181,7 @@ Many trend widgets support multiple time ranges; detail widgets use the date or 
 
 ## Tool catalog
 
-The complete production-generated list of **87 advertised public tools**, grouped by domain, is in **[TOOLS.md](./TOOLS.md)**. The machine-readable descriptions, annotations, and JSON Schemas are in **[catalog/tools.json](./catalog/tools.json)**.
+The complete production-generated list of **85 advertised public tools**, grouped by domain, is in **[TOOLS.md](./TOOLS.md)**. The machine-readable descriptions, annotations, and JSON Schemas are in **[catalog/tools.json](./catalog/tools.json)**.
 
 Both files are generated from the same production tool registry used by `tools/list`. Admin-only tools and retired tools that remain callable only for older cached clients are not advertised in this catalog.
 
