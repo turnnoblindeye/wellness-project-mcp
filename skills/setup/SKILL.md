@@ -1,62 +1,29 @@
 ---
 name: setup
-description: Connect the Wellness Project MCP server. Use when the plugin has just been installed, when the user asks how to connect Wellness Project, Apple Health, Fitbit, Oura, or Health Connect to Claude, or when a wellness-project tool call fails with an authentication or "no data" error.
+description: Help users connect Wellness Project, authorize the remote MCP connector, and troubleshoot missing or unavailable health and fitness data.
 ---
 
 # Connecting Wellness Project
 
-The plugin bundles one remote MCP server, `wellness-project`, pointed at
-`https://wellnessproject.ai/api/mcp`. It needs a Wellness Project account and an
-OAuth authorization before any tool returns data. Walk the user through the two
-steps below in order.
+Wellness Project connects Claude to the user's own account through the hosted HTTPS MCP server at https://wellnessproject.ai/api/mcp. It requires OAuth authorization. Use this skill when the user requests setup or troubleshooting; installation alone does not authorize reading or changing personal records.
 
-## 1. Account and health sources
+## Account and health sources
 
-Tools read only what the user's account already holds, so an empty account
-returns empty results rather than an error.
+Ask the user to sign in or create an account at https://wellnessproject.ai. Under Settings > Devices they can connect their preferred supported sources, such as Apple Health, Google Health Connect, Fitbit, Garmin, Oura or WHOOP, subject to availability. Manual logging works without a wearable.
 
-Tell the user to:
+## Authorize the connection
 
-1. Create a free account at https://wellnessproject.ai.
-2. Open **Settings → Devices** and connect the sources they want: Apple Health,
-   Google Health Connect, Fitbit, or Oura.
+In Claude, open the connector settings and connect Wellness Project. In Claude Code, use the MCP connection menu and select wellness-project to authenticate. The user signs in and approves the OAuth consent screen. No API key, client secret or manual credential sharing is required. Do not ask the user to share credentials in chat.
 
-Manual logging works without any device connected, so a user who only wants to
-log workouts and meals by chat can skip step 2.
+## Verify and troubleshoot
 
-## 2. Authorize the connection
+Check connection status without retrieving health records when possible. If the user requests a data check, or explicitly agrees to one, use a relevant read tool with the smallest useful date range. An empty result can mean no records are available for that period, rather than a failed connection.
 
-Run `/mcp`, select **wellness-project**, and choose to authenticate. Claude Code
-registers itself dynamically and opens a browser for the Wellness Project OAuth
-consent screen. No client ID, client secret, API key, or environment variable is
-required.
+- If tools are unavailable, check whether the plugin is enabled and the connector is authorized.
+- For an authorization error, have the user reconnect through OAuth.
+- For missing data, check that the relevant source is connected and syncing.
+- Users can revoke connector access in their Wellness Project account settings.
 
-After the user approves, `/mcp` shows the server as connected and its tools
-become available.
+Only access the data needed for the user's request. Do not create, modify or delete records during setup or troubleshooting. Explain any intended changes and obtain confirmation when the request is ambiguous.
 
-## Verifying
-
-Call a cheap read tool and check that it returns the user's own data, for
-example `list_workouts` for the last 7 days or `list_body_metrics` for the last
-30 days. An empty result means the account has nothing logged for that range,
-not that the connection failed.
-
-## Troubleshooting
-
-- **Tools missing after install**: MCP servers register when the plugin loads.
-  Restart Claude Code, then re-run `/mcp`.
-- **401 or "Unauthorized"**: the OAuth grant expired or was revoked. Re-run
-  `/mcp` and re-authenticate.
-- **Connected but every read is empty**: no health source is connected and
-  nothing has been logged. Return to step 1.
-- **Revoking access**: the user can revoke the connection from Wellness Project
-  account settings at any time.
-
-## Scope
-
-Every tool is scoped to the signed-in user's own account and enforced by
-row-level security. The catalog of tools is in
-[TOOLS.md](../../TOOLS.md) and the machine-readable schemas are in
-[catalog/tools.json](../../catalog/tools.json).
-
-Wellness Project is informational software, not a medical product.
+See the [Claude integration guide](https://wellnessproject.ai/integrations/claude), [privacy policy](https://wellnessproject.ai/privacy) and [support](https://wellnessproject.ai/support). Wellness Project is informational software, not a medical device.

@@ -1,31 +1,35 @@
 {
   "name": "wellness-project",
   "displayName": "Wellness Project",
-  "version": "1.4.0",
-  "description": "Connect Claude to your health and fitness data. Analyze workouts, sleep, recovery and nutrition, track progress, and log activities.",
+  "version": "1.4.1",
+  "description": "Track and analyze workouts, nutrition, sleep, recovery and wearable health data. Log meals and workouts directly in Claude.",
   "author": {
     "name": "Wellness Project LLC",
-    "url": "https://wellnessproject.ai",
-    "email": "support@wellnessproject.ai"
+    "email": "support@wellnessproject.ai",
+    "url": "https://wellnessproject.ai"
   },
   "homepage": "https://wellnessproject.ai",
-  "icon": "./assets/icon.png",
-  "privacyPolicyUrl": "https://wellnessproject.ai/privacy",
   "repository": "https://github.com/turnnoblindeye/wellness-project-mcp",
   "license": "MIT",
   "keywords": [
     "health",
     "fitness",
+    "workouts",
+    "nutrition",
+    "sleep",
+    "recovery",
+    "wearables",
+    "coaching",
     "apple-health",
+    "garmin",
     "fitbit",
     "oura",
-    "health-connect",
-    "sleep",
-    "nutrition",
-    "workouts",
-    "wearables"
+    "whoop",
+    "health-connect"
   ],
+  "icon": "./assets/icon.png",
   "documentationUrl": "https://wellnessproject.ai/integrations/claude",
   "supportUrl": "https://wellnessproject.ai/support",
+  "privacyPolicyUrl": "https://wellnessproject.ai/privacy",
   "termsOfServiceUrl": "https://wellnessproject.ai/terms"
 }
